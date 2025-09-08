@@ -1,0 +1,90 @@
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: ["Build and Push"]
+    types:
+      - completed
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+        - production
+        - staging
+
+env:
+  REGISTRY: docker.io
+  IMAGE_NAME: sarafrika-camp-ussd
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, sarafrika]
+    name: Deploy to Server
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    
+    environment: 
+      name: ${{ github.event.inputs.environment || 'production' }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Create deployment directory
+      run: |
+        sudo mkdir -p /opt/sarafrika
+        sudo chown $USER:$USER /opt/sarafrika
+        
+    - name: Copy deployment files
+      run: |
+        cp docker-compose.yml /opt/sarafrika/
+        cp .env.example /opt/sarafrika/
+        
+    - name: Deploy application
+      run: |
+        cd /opt/sarafrika
+        
+        # Pull latest image
+        docker pull ${{ env.REGISTRY }}/${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:latest
+        
+        # Stop existing containers
+        docker-compose down || true
+        
+        # Start services
+        docker-compose up -d
+        
+        # Wait for health check
+        echo "Waiting for application to start..."
+        timeout 300 bash -c 'until docker-compose exec -T app curl -f http://localhost:8080/q/health/ready; do sleep 5; done'
+        
+        # Clean up old images
+        docker image prune -f
+        
+    - name: Verify deployment
+      run: |
+        # Wait a moment for the service to be fully ready
+        sleep 30
+        
+        # Check if the application is responding
+        response=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/q/health/live || echo "000")
+        
+        if [ "$response" -eq 200 ]; then
+          echo "✅ Deployment successful - Application is healthy"
+        else
+          echo "❌ Deployment failed - Application is not responding (HTTP $response)"
+          exit 1
+        fi
+        
+    - name: Notify deployment status
+      if: always()
+      run: |
+        if [ "${{ job.status }}" == "success" ]; then
+          echo "🚀 Deployment to ${{ github.event.inputs.environment || 'production' }} completed successfully!"
+        else
+          echo "💥 Deployment to ${{ github.event.inputs.environment || 'production' }} failed!"
+        fi

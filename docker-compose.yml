@@ -1,0 +1,49 @@
+services:
+  redis:
+    image: redis:latest
+    container_name: sarafrika-redis
+    command: redis-server --appendonly yes --requirepass redis123
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - sarafrika-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "redis123", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sarafrika-app
+    env_file:
+      - .env
+    environment:
+      QUARKUS_REDIS_HOSTS: redis://redis:6379
+      QUARKUS_REDIS_PASSWORD: redis123
+      QUARKUS_HTTP_PORT: 8080
+      QUARKUS_LOG_LEVEL: INFO
+      QUARKUS_DATASOURCE_JDBC_URL: ${DATABASE_URL}
+      QUARKUS_DATASOURCE_USERNAME: ${DATABASE_USERNAME}
+      QUARKUS_DATASOURCE_PASSWORD: ${DATABASE_PASSWORD}
+      QUARKUS_FLYWAY_MIGRATE_AT_START: true
+    ports:
+      - "8080:8080"
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - sarafrika-network
+    restart: unless-stopped
+
+volumes:
+  redis_data:
+    driver: local
+
+networks:
+  sarafrika-network:
+    driver: bridge

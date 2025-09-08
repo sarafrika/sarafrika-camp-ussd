@@ -1,0 +1,51 @@
+quarkus:
+  application:
+    name: sarafrika-camp-ussd
+    
+  datasource:
+    db-kind: postgresql
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+    jdbc:
+      url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:sarafrika_camp}
+      
+  hibernate-orm:
+    database:
+      generation: none
+    log:
+      sql: false
+      
+  flyway:
+    migrate-at-start: true
+    baseline-on-migrate: true
+    
+  redis:
+    hosts: redis://${REDIS_HOST:localhost}:${REDIS_PORT:6379}
+    timeout: 10s
+    
+  rest-client:
+    africas-talking:
+      url: https://api.africastalking.com
+      
+  smallrye-openapi:
+    path: /openapi
+    
+  swagger-ui:
+    always-include: true
+    path: /swagger-ui
+    
+  http:
+    port: 8080
+
+africas-talking:
+  api-key: ${AFRICAS_TALKING_API_KEY:your-api-key}
+  username: ${AFRICAS_TALKING_USERNAME:your-username}
+  environment: ${AFRICAS_TALKING_ENVIRONMENT:sandbox}
+  
+ussd:
+  service-code: ${USSD_SERVICE_CODE:*123#}
+  session-timeout: 300 # 5 minutes in seconds
+
+logging:
+  level:
+    apps.sarafrika: DEBUG
