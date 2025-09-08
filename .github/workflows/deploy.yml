@@ -24,7 +24,7 @@ env:
 
 jobs:
   deploy:
-    runs-on: [self-hosted, sarafrika]
+    runs-on: ubuntu-latest
     name: Deploy to Server
     if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
     
@@ -35,50 +35,60 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
+    - name: Install sshpass
+      run: sudo apt-get update && sudo apt-get install -y sshpass
+        
+    - name: Add server to known hosts
+      run: |
+        ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+        
     - name: Create deployment directory
       run: |
-        sudo mkdir -p /opt/sarafrika
-        sudo chown $USER:$USER /opt/sarafrika
+        sshpass -p '${{ secrets.SSH_PASSWORD }}' ssh ${{ secrets.SSH_USER }}@${{ secrets.SERVER_HOST }} "mkdir -p ~/products/camp-ussd"
         
     - name: Copy deployment files
       run: |
-        cp docker-compose.yml /opt/sarafrika/
-        cp .env.example /opt/sarafrika/
+        sshpass -p '${{ secrets.SSH_PASSWORD }}' scp docker-compose.yml ${{ secrets.SSH_USER }}@${{ secrets.SERVER_HOST }}:~/products/camp-ussd/
+        sshpass -p '${{ secrets.SSH_PASSWORD }}' scp .env.example ${{ secrets.SSH_USER }}@${{ secrets.SERVER_HOST }}:~/products/camp-ussd/
         
     - name: Deploy application
       run: |
-        cd /opt/sarafrika
-        
-        # Pull latest image
-        docker pull ${{ env.REGISTRY }}/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest
-        
-        # Stop existing containers
-        docker-compose down || true
-        
-        # Start services
-        docker-compose up -d
-        
-        # Wait for health check
-        echo "Waiting for application to start..."
-        timeout 300 bash -c 'until docker-compose exec -T app curl -f http://localhost:8080/q/health/ready; do sleep 5; done'
-        
-        # Clean up old images
-        docker image prune -f
+        sshpass -p '${{ secrets.SSH_PASSWORD }}' ssh ${{ secrets.SSH_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+          cd ~/products/camp-ussd
+          
+          # Pull latest image
+          docker pull ${{ env.REGISTRY }}/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest
+          
+          # Stop existing containers
+          docker-compose down || true
+          
+          # Start services
+          docker-compose up -d
+          
+          # Wait for health check
+          echo "Waiting for application to start..."
+          timeout 300 bash -c 'until docker-compose exec -T app curl -f http://localhost:8080/q/health/ready; do sleep 5; done'
+          
+          # Clean up old images
+          docker image prune -f
+        EOF
         
     - name: Verify deployment
       run: |
         # Wait a moment for the service to be fully ready
         sleep 30
         
-        # Check if the application is responding
-        response=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/q/health/live || echo "000")
-        
-        if [ "$response" -eq 200 ]; then
-          echo "✅ Deployment successful - Application is healthy"
-        else
-          echo "❌ Deployment failed - Application is not responding (HTTP $response)"
-          exit 1
-        fi
+        # Check if the application is responding on the remote server
+        sshpass -p '${{ secrets.SSH_PASSWORD }}' ssh ${{ secrets.SSH_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+          response=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:40000/q/health/live || echo "000")
+          
+          if [ "$response" -eq 200 ]; then
+            echo "✅ Deployment successful - Application is healthy"
+          else
+            echo "❌ Deployment failed - Application is not responding (HTTP $response)"
+            exit 1
+          fi
+        EOF
         
     - name: Notify deployment status
       if: always()
