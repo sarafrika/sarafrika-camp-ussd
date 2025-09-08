@@ -50,7 +50,7 @@ jobs:
         cd /opt/sarafrika
         
         # Pull latest image
-        docker pull ${{ env.REGISTRY }}/${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:latest
+        docker pull ${{ env.REGISTRY }}/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest
         
         # Stop existing containers
         docker-compose down || true
