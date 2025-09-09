@@ -44,7 +44,7 @@ jobs:
       run: chmod +x ./gradlew
       
     - name: Build native application
-      run: ./gradlew build -x test -Dquarkus.native.enabled=true
+      run: ./gradlew buildNative -x test
       
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
