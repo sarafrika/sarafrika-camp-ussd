@@ -3,7 +3,10 @@ CREATE TYPE payment_status AS ENUM ('PENDING', 'INITIATED', 'SUCCESS', 'FAILED',
 CREATE TYPE order_status AS ENUM ('PENDING', 'CONFIRMED', 'PAID', 'CANCELLED', 'REFUNDED');
 
 -- Update orders table to use enum for status
+-- First remove any default value, then change type, then set new default
+ALTER TABLE orders ALTER COLUMN status DROP DEFAULT;
 ALTER TABLE orders ALTER COLUMN status TYPE order_status USING status::order_status;
+ALTER TABLE orders ALTER COLUMN status SET DEFAULT 'PENDING';
 
 CREATE TABLE payments (
     id BIGSERIAL PRIMARY KEY,
