@@ -158,21 +158,23 @@ jobs:
           echo "✅ Deployment successful - Application is healthy at https://camp-ussd.sarafrika.com"
         else
           echo "❌ Deployment failed - Application is not responding (HTTP $response)"
-          echo "Checking local container health as fallback..."
-          
-          # Fallback check on the server
-          sshpass -p '${{ secrets.SSH_PASSWORD }}' ssh ${{ secrets.SSH_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
-            local_response=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:40000/q/health/live || echo "000")
-            echo "Local container health check: HTTP $local_response"
-            
-            if [ "$local_response" -eq 200 ]; then
-              echo "🔧 Container is healthy but may have connectivity/proxy issues"
-            else
-              echo "💥 Container is also unhealthy locally"
-            fi
-          EOF
           exit 1
         fi
+        
+    - name: Fallback health check
+      if: failure()
+      run: |
+        echo "Checking local container health as fallback..."
+        sshpass -p '${{ secrets.SSH_PASSWORD }}' ssh ${{ secrets.SSH_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+        local_response=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:40000/q/health/live || echo "000")
+        echo "Local container health check: HTTP $local_response"
+        
+        if [ "$local_response" -eq 200 ]; then
+          echo "🔧 Container is healthy but may have connectivity/proxy issues"
+        else
+          echo "💥 Container is also unhealthy locally"
+        fi
+        EOF
         
     - name: Notify deployment status
       if: always()
