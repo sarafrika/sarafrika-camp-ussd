@@ -49,6 +49,9 @@ jobs:
         
     - name: Copy deployment files
       run: |
+        # Remove existing docker-compose.yml to ensure fresh deployment
+        sshpass -p '${{ secrets.SSH_PASSWORD }}' ssh ${{ secrets.SSH_USER }}@${{ secrets.SERVER_HOST }} "rm -f ~/products/camp-ussd/docker-compose.yml"
+        # Copy fresh deployment files
         sshpass -p '${{ secrets.SSH_PASSWORD }}' scp docker-compose.yml .env.example ${{ secrets.SSH_USER }}@${{ secrets.SERVER_HOST }}:~/products/camp-ussd/
         
     - name: Setup environment configuration
