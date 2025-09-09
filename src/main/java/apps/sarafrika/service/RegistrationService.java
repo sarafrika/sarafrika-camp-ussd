@@ -15,7 +15,7 @@ import java.util.UUID;
 public class RegistrationService {
 
     private static final String REFERENCE_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-    private static final SecureRandom random = new SecureRandom();
+    private final SecureRandom random = new SecureRandom();
 
     @Inject
     CampService campService;
