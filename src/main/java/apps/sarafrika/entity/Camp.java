@@ -1,5 +1,6 @@
 package apps.sarafrika.entity;
 
+import apps.sarafrika.enums.CampType;
 import io.quarkus.hibernate.orm.panache.PanacheQuery;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
@@ -15,6 +16,9 @@ public class Camp extends BaseEntity {
 
     @Column(name = "category")
     public String category;
+
+    @Column(name = "camp_type")
+    public CampType campType;
 
     @Column(name = "location")
     public String location;
