@@ -12,25 +12,19 @@ CREATE TABLE user_interactions (
     processing_time_ms INTEGER,
     error_message TEXT,
     metadata JSONB, -- Additional context data
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(255),
+    updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(255),
+    is_deleted BOOLEAN DEFAULT FALSE,
+    deleted_by VARCHAR(255),
+    deleted_date TIMESTAMP
 );
 
 -- Indexes for performance
 CREATE INDEX idx_user_interactions_session_id ON user_interactions(session_id);
 CREATE INDEX idx_user_interactions_phone_number ON user_interactions(phone_number);
-CREATE INDEX idx_user_interactions_created_at ON user_interactions(created_at);
+CREATE INDEX idx_user_interactions_created_date ON user_interactions(created_date);
 CREATE INDEX idx_user_interactions_type_state ON user_interactions(interaction_type, current_state);
 CREATE INDEX idx_user_interactions_uuid ON user_interactions(uuid);
-
--- Trigger to update updated_at timestamp
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = CURRENT_TIMESTAMP;
-    RETURN NEW;
-END;
-$$ language 'plpgsql';
-
-CREATE TRIGGER update_user_interactions_updated_at BEFORE UPDATE
-    ON user_interactions FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
+CREATE INDEX idx_user_interactions_is_deleted ON user_interactions(is_deleted);

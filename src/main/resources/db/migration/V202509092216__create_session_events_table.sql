@@ -10,17 +10,19 @@ CREATE TABLE session_events (
     redis_operation_time_ms INTEGER,
     network_code VARCHAR(20),
     service_code VARCHAR(20),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(255),
+    updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(255),
+    is_deleted BOOLEAN DEFAULT FALSE,
+    deleted_by VARCHAR(255),
+    deleted_date TIMESTAMP
 );
 
 -- Indexes for performance
 CREATE INDEX idx_session_events_session_id ON session_events(session_id);
 CREATE INDEX idx_session_events_phone_number ON session_events(phone_number);
 CREATE INDEX idx_session_events_event_type ON session_events(event_type);
-CREATE INDEX idx_session_events_created_at ON session_events(created_at);
+CREATE INDEX idx_session_events_created_date ON session_events(created_date);
 CREATE INDEX idx_session_events_uuid ON session_events(uuid);
-
--- Trigger to update updated_at timestamp
-CREATE TRIGGER update_session_events_updated_at BEFORE UPDATE
-    ON session_events FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
+CREATE INDEX idx_session_events_is_deleted ON session_events(is_deleted);
