@@ -14,6 +14,9 @@ quarkus:
       generation: none
     log:
       sql: false
+    mapping:
+      format:
+        global: ignore
       
   flyway:
     migrate-at-start: true
