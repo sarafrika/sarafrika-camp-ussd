@@ -60,9 +60,20 @@ jobs:
           if [ ! -f .env ]; then
             echo "📋 Creating .env file from .env.example template..."
             cp .env.example .env
-            echo "⚠️  .env file created from template. Please configure the following required variables:"
+            echo "⚠️  .env file created from template. Please configure the required variables."
           else
-            echo "📋 .env file already exists. Validating configuration..."
+            echo "📋 .env file already exists. Checking for missing properties..."
+            
+            # Add missing properties from .env.example to existing .env
+            while IFS= read -r line; do
+              if [[ "$line" =~ ^[A-Z_]+=.* ]]; then
+                var_name=$(echo "$line" | cut -d'=' -f1)
+                if ! grep -q "^${var_name}=" .env; then
+                  echo "➕ Adding missing property: $var_name"
+                  echo "$line" >> .env
+                fi
+              fi
+            done < .env.example
           fi
         EOF
         
@@ -71,35 +82,25 @@ jobs:
         sshpass -p '${{ secrets.SSH_PASSWORD }}' ssh ${{ secrets.SSH_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
           cd ~/products/camp-ussd
           
-          # Define required environment variables
-          required_vars=(
-            "DATABASE_URL"
-            "DATABASE_USERNAME" 
-            "DATABASE_PASSWORD"
-            "AFRICAS_TALKING_USERNAME"
-            "AFRICAS_TALKING_API_KEY"
-            "AFRICAS_TALKING_USSD_SERVICE_CODE"
-            "MPESA_CONSUMER_KEY"
-            "MPESA_CONSUMER_SECRET"
-            "MPESA_SHORTCODE"
-            "MPESA_PASSKEY"
-          )
-          
           missing_vars=()
           placeholder_vars=()
           
-          # Check each required variable
-          for var in "${required_vars[@]}"; do
-            if ! grep -q "^${var}=" .env; then
-              missing_vars+=("$var")
-            else
-              value=$(grep "^${var}=" .env | cut -d'=' -f2-)
-              # Check if value contains placeholder text or is empty
-              if [[ -z "$value" ]] || [[ "$value" =~ ^(your_|your-) ]]; then
-                placeholder_vars+=("$var")
+          # Check each variable defined in .env.example
+          while IFS= read -r line; do
+            if [[ "$line" =~ ^[A-Z_]+=.* ]]; then
+              var_name=$(echo "$line" | cut -d'=' -f1)
+              
+              if ! grep -q "^${var_name}=" .env; then
+                missing_vars+=("$var_name")
+              else
+                value=$(grep "^${var_name}=" .env | cut -d'=' -f2-)
+                # Check if value contains placeholder text or is empty
+                if [[ -z "$value" ]] || [[ "$value" =~ ^(your_|your-) ]]; then
+                  placeholder_vars+=("$var_name")
+                fi
               fi
             fi
-          done
+          done < .env.example
           
           # Report missing variables
           if [ ${#missing_vars[@]} -gt 0 ]; then
@@ -130,7 +131,7 @@ jobs:
           cd ~/products/camp-ussd
           
           # Pull latest image
-          docker pull ${{ env.REGISTRY }}/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest
+          docker pull ${{ env.REGISTRY }}/sarafrika/${{ env.IMAGE_NAME }}:latest
           
           # Stop existing containers
           docker-compose down || true
