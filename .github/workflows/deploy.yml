@@ -151,17 +151,28 @@ jobs:
         # Wait a moment for the service to be fully ready
         sleep 30
         
-        # Check if the application is responding on the remote server
-        sshpass -p '${{ secrets.SSH_PASSWORD }}' ssh ${{ secrets.SSH_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
-          response=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:40000/q/health/live || echo "000")
+        # Check if the application is responding via the production URL
+        response=$(curl -s -o /dev/null -w "%{http_code}" https://camp-ussd.sarafrika.com/q/health/live || echo "000")
+        
+        if [ "$response" -eq 200 ]; then
+          echo "✅ Deployment successful - Application is healthy at https://camp-ussd.sarafrika.com"
+        else
+          echo "❌ Deployment failed - Application is not responding (HTTP $response)"
+          echo "Checking local container health as fallback..."
           
-          if [ "$response" -eq 200 ]; then
-            echo "✅ Deployment successful - Application is healthy"
-          else
-            echo "❌ Deployment failed - Application is not responding (HTTP $response)"
-            exit 1
-          fi
-        EOF
+          # Fallback check on the server
+          sshpass -p '${{ secrets.SSH_PASSWORD }}' ssh ${{ secrets.SSH_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+            local_response=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:40000/q/health/live || echo "000")
+            echo "Local container health check: HTTP $local_response"
+            
+            if [ "$local_response" -eq 200 ]; then
+              echo "🔧 Container is healthy but may have connectivity/proxy issues"
+            else
+              echo "💥 Container is also unhealthy locally"
+            fi
+          EOF
+          exit 1
+        fi
         
     - name: Notify deployment status
       if: always()

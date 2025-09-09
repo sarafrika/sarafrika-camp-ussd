@@ -79,7 +79,7 @@ import jakarta.ws.rs.core.Application;
     servers = {
         @Server(url = "http://localhost:8080", description = "Development Server"),
         @Server(url = "https://ussd-staging.sarafrika.com", description = "Staging Server"),
-        @Server(url = "https://ussd.sarafrika.com", description = "Production Server")
+        @Server(url = "https://camp-ussd.sarafrika.com", description = "Production Server")
     },
     tags = {
         @Tag(name = "USSD", description = "USSD webhook and session management endpoints"),
