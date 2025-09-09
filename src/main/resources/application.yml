@@ -21,7 +21,6 @@ quarkus:
     
   redis:
     hosts: redis://${REDIS_HOST:localhost}:${REDIS_PORT:6379}
-    password: ${REDIS_PASSWORD:}
     timeout: 10s
     
   rest-client:
