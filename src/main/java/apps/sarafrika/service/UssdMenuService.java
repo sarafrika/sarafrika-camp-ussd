@@ -31,6 +31,9 @@ public class UssdMenuService {
     @Inject
     TrackingService trackingService;
 
+    @Inject
+    SmsNotificationService smsNotificationService;
+
     public String processUssdInput(UserSession session, String text) {
         
         if (text == null || text.trim().isEmpty()) {
@@ -288,13 +291,36 @@ public class UssdMenuService {
         try {
             Registration registration = registrationService.createRegistration(session);
             
+            // Send SMS notifications
+            String participantPhone = session.getStringData("participantPhone");
+            String guardianPhone = session.getStringData("guardianPhone");
+            String participantName = session.getStringData("participantName");
+            
+            // Send confirmation SMS to participant
+            smsNotificationService.sendRegistrationConfirmation(
+                participantPhone, 
+                participantName, 
+                registration.camp.name, 
+                registration.referenceCode
+            );
+            
+            // Send notification SMS to guardian if different phone number
+            if (guardianPhone != null && !guardianPhone.equals(participantPhone)) {
+                smsNotificationService.sendGuardianNotification(
+                    guardianPhone, 
+                    participantName, 
+                    registration.camp.name, 
+                    registration.referenceCode
+                );
+            }
+            
             return String.format("""
                 END Registration successful!
                 
                 Reference: %s
                 
                 Please complete payment via M-Pesa.
-                You will receive an SMS confirmation.
+                You will receive SMS confirmations.
                 
                 Thank you for choosing Camp Sarafrika!""",
                 registration.referenceCode);

@@ -6,6 +6,7 @@ plugins {
 repositories {
     mavenCentral()
     mavenLocal()
+    maven { url "https://jitpack.io" }
 }
 
 dependencies {
@@ -23,6 +24,7 @@ dependencies {
     implementation 'io.quarkus:quarkus-config-yaml'
     implementation 'io.quarkus:quarkus-scheduler'
     implementation 'io.quarkus:quarkus-hibernate-validator'
+    implementation 'com.github.AfricasTalkingLtd.africastalking-java:core:3.4.11'
     
     testImplementation 'io.quarkus:quarkus-junit5'
     testImplementation 'io.rest-assured:rest-assured'
