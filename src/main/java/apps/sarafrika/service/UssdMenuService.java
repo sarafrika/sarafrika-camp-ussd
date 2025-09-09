@@ -34,6 +34,9 @@ public class UssdMenuService {
     @Inject
     SmsNotificationService smsNotificationService;
 
+    @Inject
+    LocationService locationService;
+
     public String processUssdInput(UserSession session, String text) {
         
         if (text == null || text.trim().isEmpty()) {
@@ -154,9 +157,15 @@ public class UssdMenuService {
             // Clean up camp name - remove redundant category prefixes
             String cleanCampName = cleanCampName(camp.name, displayCategory);
             
-            // Format location for better understanding
-            String readableLocation = formatLocationForDisplay(camp.location);
-            String campDetail = String.format("%s, KSH %.0f", readableLocation, camp.fee);
+            // Get location and fee information from the first location
+            String locationName = "";
+            String fee = "0";
+            if (camp.locations != null && !camp.locations.isEmpty()) {
+                locationName = camp.locations.get(0).name;
+                fee = String.format("%.0f", camp.locations.get(0).fee);
+            }
+            
+            String campDetail = String.format("%s, KSH %s", locationName, fee);
             
             // Check if adding this camp would exceed limits
             if (!builder.wouldExceedLimit(String.format("%d. %s - %s", i + 1, cleanCampName, campDetail))) {
@@ -166,9 +175,9 @@ public class UssdMenuService {
                 // If we can't fit, prioritize showing location over long names
                 String shortName = cleanCampName.length() > 20 ? 
                     cleanCampName.substring(0, 17) + "..." : cleanCampName;
-                String shortDetail = String.format("%s, KSH %.0f", 
-                    readableLocation.length() > 10 ? readableLocation.substring(0, 7) + "..." : readableLocation, 
-                    camp.fee);
+                String shortDetail = String.format("%s, KSH %s", 
+                    locationName.length() > 10 ? locationName.substring(0, 7) + "..." : locationName, 
+                    fee);
                 builder.addMenuItem(i + 1, shortName, shortDetail);
                 session.currentMenuItems.add(camp.uuid.toString());
             }
@@ -264,13 +273,20 @@ public class UssdMenuService {
             return "END Camp not found. Please try again.";
         }
         
+        String locationName = "";
+        String fee = "0";
+        if (camp.locations != null && !camp.locations.isEmpty()) {
+            locationName = camp.locations.get(0).name;
+            fee = String.format("%.0f", camp.locations.get(0).fee);
+        }
+        
         StringBuilder response = new StringBuilder("CON Registration Summary:\n\n");
         response.append(String.format("Camp: %s\n", camp.name));
-        response.append(String.format("Location: %s\n", camp.location));
+        response.append(String.format("Location: %s\n", locationName));
         response.append(String.format("Dates: %s\n", camp.dates));
         response.append(String.format("Participant: %s\n", session.getStringData("participantName")));
         response.append(String.format("Age: %s\n", session.getStringData("participantAge")));
-        response.append(String.format("Fee: KSH %.0f\n\n", camp.fee));
+        response.append(String.format("Fee: KSH %s\n\n", fee));
         response.append("1. Confirm & Pay\n");
         response.append("2. Cancel\n\n");
         response.append("0. Back");

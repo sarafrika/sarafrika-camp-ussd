@@ -20,17 +20,19 @@ public class Camp extends BaseEntity {
     @Column(name = "camp_type")
     public CampType campType;
 
-    @Column(name = "location")
-    public String location;
-
     @Column(name = "dates")
     public String dates;
 
-    @Column(name = "fee")
-    public BigDecimal fee;
+    @ManyToMany
+    @JoinTable(
+        name = "camp_locations",
+        joinColumns = @JoinColumn(name = "camp_id"),
+        inverseJoinColumns = @JoinColumn(name = "location_id")
+    )
+    public List<Location> locations;
 
-    @Column(name = "activities", columnDefinition = "jsonb")
-    public String activities;
+    @OneToMany(mappedBy = "camp", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    public List<Activity> activities;
 
     @OneToMany(mappedBy = "camp", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     public List<Registration> registrations;
