@@ -2,102 +2,599 @@
 
 ## Overview
 
-This guide provides comprehensive instructions for populating the Camp Sarafrika database to achieve the desired USSD flow. The data structure must support the menu hierarchy and user journey outlined in the PDF specification.
+This guide provides comprehensive instructions for populating the Camp Sarafrika database using API endpoints to achieve the desired USSD flow. All data is managed through REST APIs rather than direct database manipulation, ensuring proper validation, relationships, and audit trails.
 
-## Data Population Strategy
+## API-Based Data Population Strategy
 
 ### 1. Foundation Data (Locations)
-First, establish locations with their associated fees, as these form the pricing foundation.
+First, establish locations with their associated fees through the Location API, as these form the pricing foundation.
 
 ### 2. Camp Categories
-Create camps organized by the five main categories from the specification.
+Create camps organized by the five main categories using the Camp API.
 
 ### 3. Activities
-Populate activities for each camp based on the detailed activity list.
+Populate activities for each camp using the Activity API with proper camp relationships.
 
-### 4. Junction Data
-Link camps to locations through the many-to-many relationship.
+### 4. Relationship Management
+Camp-location relationships are managed automatically through the normalized database structure.
 
-## Step-by-Step Population
+## Step-by-Step API Population
 
-### Step 1: Populate Locations
+### Step 1: Populate Locations via API
 
-```sql
--- Create locations with standardized pricing
-INSERT INTO locations (name, fee, created_date, created_by) VALUES
--- Primary locations from PDF
-('Kiambu', 12500.00, CURRENT_TIMESTAMP, 'system'),
-('Nairobi', 12500.00, CURRENT_TIMESTAMP, 'system'),
-('Rongai', 12500.00, CURRENT_TIMESTAMP, 'system'),
+Use the Location Management API to create locations with standardized pricing:
 
--- Additional locations with varied pricing
-('Naivasha', 15000.00, CURRENT_TIMESTAMP, 'system'),     -- Adventure location
-('Karen', 12000.00, CURRENT_TIMESTAMP, 'system'),        -- Arts location
-('Mombasa', 18000.00, CURRENT_TIMESTAMP, 'system'),      -- Coastal premium
-('Mount Kenya', 22000.00, CURRENT_TIMESTAMP, 'system'),  -- Adventure premium
-('Kisumu', 14000.00, CURRENT_TIMESTAMP, 'system'),       -- Western region
+**Endpoint**: `POST /api/locations`
 
--- Specialized locations
-('Nairobi Sports Club', 15000.00, CURRENT_TIMESTAMP, 'system'),
-('University of Nairobi', 18000.00, CURRENT_TIMESTAMP, 'system'),
-('National Museums', 13000.00, CURRENT_TIMESTAMP, 'system'),
-('Aberdare National Park', 25000.00, CURRENT_TIMESTAMP, 'system'),
-('iHub Nairobi', 22000.00, CURRENT_TIMESTAMP, 'system');
+**Primary locations from PDF specification:**
+```json
+POST /api/locations
+Content-Type: application/json
+
+{
+  "name": "Kiambu",
+  "fee": 12500.00
+}
 ```
 
-### Step 2: Populate Camp Categories
+```json
+POST /api/locations
+Content-Type: application/json
 
-Based on the PDF specification, create camps for each category:
+{
+  "name": "Nairobi", 
+  "fee": 12500.00
+}
+```
+
+```json
+POST /api/locations
+Content-Type: application/json
+
+{
+  "name": "Rongai",
+  "fee": 12500.00
+}
+```
+
+**Additional locations with varied pricing:**
+```json
+POST /api/locations
+Content-Type: application/json
+
+{
+  "name": "Naivasha",
+  "fee": 15000.00
+}
+```
+
+```json
+POST /api/locations
+Content-Type: application/json
+
+{
+  "name": "Karen",
+  "fee": 12000.00
+}
+```
+
+```json
+POST /api/locations
+Content-Type: application/json
+
+{
+  "name": "Mombasa",
+  "fee": 18000.00
+}
+```
+
+```json
+POST /api/locations
+Content-Type: application/json
+
+{
+  "name": "Mount Kenya",
+  "fee": 22000.00
+}
+```
+
+```json
+POST /api/locations
+Content-Type: application/json
+
+{
+  "name": "Kisumu",
+  "fee": 14000.00
+}
+```
+
+**Specialized locations:**
+```json
+POST /api/locations
+Content-Type: application/json
+
+{
+  "name": "Nairobi Sports Club",
+  "fee": 15000.00
+}
+```
+
+```json
+POST /api/locations
+Content-Type: application/json
+
+{
+  "name": "University of Nairobi",
+  "fee": 18000.00
+}
+```
+
+```json
+POST /api/locations
+Content-Type: application/json
+
+{
+  "name": "National Museums",
+  "fee": 13000.00
+}
+```
+
+```json
+POST /api/locations
+Content-Type: application/json
+
+{
+  "name": "Aberdare National Park",
+  "fee": 25000.00
+}
+```
+
+```json
+POST /api/locations
+Content-Type: application/json
+
+{
+  "name": "iHub Nairobi",
+  "fee": 22000.00
+}
+```
+
+### Step 2: Populate Camp Categories via API
+
+Based on the PDF specification, create camps for each category using the Camp Management API:
+
+**Endpoint**: `POST /api/camps`
 
 #### A. Young Musicians & Artists Camp (YMAC)
-```sql
--- YMAC camps as specified in PDF
-INSERT INTO camps (name, category, camp_type, dates, created_date, created_by) VALUES
-('YMAC Consolata School', 'Young Musicians & Artists Camp (YMAC)', 'HALF_DAY', '17th-29th Nov', CURRENT_TIMESTAMP, 'system'),
-('YMAC Creative Integrated School', 'Young Musicians & Artists Camp (YMAC)', 'HALF_DAY', '3rd-20th Nov', CURRENT_TIMESTAMP, 'system'),
-('YMAC - Olerai Rongai School', 'Young Musicians & Artists Camp (YMAC)', 'HALF_DAY', 'Dec 1st-12th', CURRENT_TIMESTAMP, 'system'),
-('YMAC - Olerai Kiserian School', 'Young Musicians & Artists Camp (YMAC)', 'HALF_DAY', 'Dec 1st-12th', CURRENT_TIMESTAMP, 'system'),
-('YMAC - Garden Brook School', 'Young Musicians & Artists Camp (YMAC)', 'HALF_DAY', 'Dec 1st-12th', CURRENT_TIMESTAMP, 'system'),
-('YMAC - Chantilly School', 'Young Musicians & Artists Camp (YMAC)', 'HALF_DAY', 'Dec 1st-12th', CURRENT_TIMESTAMP, 'system'),
-('YMAC - White Cottage School', 'Young Musicians & Artists Camp (YMAC)', 'HALF_DAY', 'Dec 1st-12th', CURRENT_TIMESTAMP, 'system');
+
+**YMAC camps as specified in PDF:**
+```json
+POST /api/camps
+Content-Type: application/json
+
+{
+  "name": "YMAC Consolata School",
+  "category": "Young Musicians & Artists Camp (YMAC)",
+  "campType": "HALF_DAY",
+  "dates": "17th-29th Nov",
+  "locations": [
+    {
+      "name": "Kiambu"
+    }
+  ]
+}
+```
+
+```json
+POST /api/camps
+Content-Type: application/json
+
+{
+  "name": "YMAC Creative Integrated School",
+  "category": "Young Musicians & Artists Camp (YMAC)",
+  "campType": "HALF_DAY",
+  "dates": "3rd-20th Nov",
+  "locations": [
+    {
+      "name": "Nairobi"
+    }
+  ]
+}
+```
+
+```json
+POST /api/camps
+Content-Type: application/json
+
+{
+  "name": "YMAC - Olerai Rongai School",
+  "category": "Young Musicians & Artists Camp (YMAC)",
+  "campType": "HALF_DAY",
+  "dates": "Dec 1st-12th",
+  "locations": [
+    {
+      "name": "Rongai"
+    }
+  ]
+}
+```
+
+```json
+POST /api/camps
+Content-Type: application/json
+
+{
+  "name": "YMAC - Olerai Kiserian School",
+  "category": "Young Musicians & Artists Camp (YMAC)",
+  "campType": "HALF_DAY",
+  "dates": "Dec 1st-12th",
+  "locations": [
+    {
+      "name": "Rongai"
+    }
+  ]
+}
+```
+
+```json
+POST /api/camps
+Content-Type: application/json
+
+{
+  "name": "YMAC - Garden Brook School",
+  "category": "Young Musicians & Artists Camp (YMAC)",
+  "campType": "HALF_DAY",
+  "dates": "Dec 1st-12th",
+  "locations": [
+    {
+      "name": "Rongai"
+    }
+  ]
+}
+```
+
+```json
+POST /api/camps
+Content-Type: application/json
+
+{
+  "name": "YMAC - Chantilly School",
+  "category": "Young Musicians & Artists Camp (YMAC)",
+  "campType": "HALF_DAY",
+  "dates": "Dec 1st-12th",
+  "locations": [
+    {
+      "name": "Rongai"
+    }
+  ]
+}
+```
+
+```json
+POST /api/camps
+Content-Type: application/json
+
+{
+  "name": "YMAC - White Cottage School",
+  "category": "Young Musicians & Artists Camp (YMAC)",
+  "campType": "HALF_DAY",
+  "dates": "Dec 1st-12th",
+  "locations": [
+    {
+      "name": "Rongai"
+    }
+  ]
+}
 ```
 
 #### B. Sports Camps
-```sql
-INSERT INTO camps (name, category, camp_type, dates, created_date, created_by) VALUES
-('Sports Excellence Academy', 'Sports', 'HALF_DAY', 'Dec 5-15', CURRENT_TIMESTAMP, 'system'),
-('Football Mastery Camp', 'Sports', 'HALF_DAY', 'Dec 10-20', CURRENT_TIMESTAMP, 'system'),
-('Basketball Skills Development', 'Sports', 'HALF_DAY', 'Dec 12-22', CURRENT_TIMESTAMP, 'system'),
-('Swimming Champions Program', 'Sports', 'BOOT_CAMP', 'Dec 15-25', CURRENT_TIMESTAMP, 'system'),
-('Athletics Performance Camp', 'Sports', 'BOOT_CAMP', 'Jan 5-15', CURRENT_TIMESTAMP, 'system');
+```json
+POST /api/camps
+Content-Type: application/json
+
+{
+  "name": "Sports Excellence Academy",
+  "category": "Sports",
+  "campType": "HALF_DAY",
+  "dates": "Dec 5-15",
+  "locations": [
+    {
+      "name": "Nairobi Sports Club"
+    }
+  ]
+}
+```
+
+```json
+POST /api/camps
+Content-Type: application/json
+
+{
+  "name": "Football Mastery Camp",
+  "category": "Sports",
+  "campType": "HALF_DAY",
+  "dates": "Dec 10-20",
+  "locations": [
+    {
+      "name": "Nairobi Sports Club"
+    }
+  ]
+}
+```
+
+```json
+POST /api/camps
+Content-Type: application/json
+
+{
+  "name": "Basketball Skills Development",
+  "category": "Sports",
+  "campType": "HALF_DAY",
+  "dates": "Dec 12-22",
+  "locations": [
+    {
+      "name": "Nairobi Sports Club"
+    }
+  ]
+}
+```
+
+```json
+POST /api/camps
+Content-Type: application/json
+
+{
+  "name": "Swimming Champions Program",
+  "category": "Sports",
+  "campType": "BOOT_CAMP",
+  "dates": "Dec 15-25",
+  "locations": [
+    {
+      "name": "Mombasa"
+    }
+  ]
+}
+```
+
+```json
+POST /api/camps
+Content-Type: application/json
+
+{
+  "name": "Athletics Performance Camp",
+  "category": "Sports",
+  "campType": "BOOT_CAMP",
+  "dates": "Jan 5-15",
+  "locations": [
+    {
+      "name": "Nairobi Sports Club"
+    }
+  ]
+}
 ```
 
 #### C. Science & Tech Camps
-```sql
-INSERT INTO camps (name, category, camp_type, dates, created_date, created_by) VALUES
-('Science & Tech Innovation Hub', 'Science & Tech', 'HALF_DAY', 'Jan 8-18', CURRENT_TIMESTAMP, 'system'),
-('Coding Bootcamp', 'Science & Tech', 'BOOT_CAMP', 'Jan 15-25', CURRENT_TIMESTAMP, 'system'),
-('Robotics Workshop', 'Science & Tech', 'HALF_DAY', 'Dec 20-30', CURRENT_TIMESTAMP, 'system'),
-('AI & Machine Learning Camp', 'Science & Tech', 'BOOT_CAMP', 'Jan 10-20', CURRENT_TIMESTAMP, 'system'),
-('3D Printing & Design', 'Science & Tech', 'HALF_DAY', 'Dec 18-28', CURRENT_TIMESTAMP, 'system');
+```json
+POST /api/camps
+Content-Type: application/json
+
+{
+  "name": "Science & Tech Innovation Hub",
+  "category": "Science & Tech",
+  "campType": "HALF_DAY",
+  "dates": "Jan 8-18",
+  "locations": [
+    {
+      "name": "University of Nairobi"
+    }
+  ]
+}
+```
+
+```json
+POST /api/camps
+Content-Type: application/json
+
+{
+  "name": "Coding Bootcamp",
+  "category": "Science & Tech",
+  "campType": "BOOT_CAMP",
+  "dates": "Jan 15-25",
+  "locations": [
+    {
+      "name": "iHub Nairobi"
+    }
+  ]
+}
+```
+
+```json
+POST /api/camps
+Content-Type: application/json
+
+{
+  "name": "Robotics Workshop",
+  "category": "Science & Tech",
+  "campType": "HALF_DAY",
+  "dates": "Dec 20-30",
+  "locations": [
+    {
+      "name": "University of Nairobi"
+    }
+  ]
+}
+```
+
+```json
+POST /api/camps
+Content-Type: application/json
+
+{
+  "name": "AI & Machine Learning Camp",
+  "category": "Science & Tech",
+  "campType": "BOOT_CAMP",
+  "dates": "Jan 10-20",
+  "locations": [
+    {
+      "name": "iHub Nairobi"
+    }
+  ]
+}
+```
+
+```json
+POST /api/camps
+Content-Type: application/json
+
+{
+  "name": "3D Printing & Design",
+  "category": "Science & Tech",
+  "campType": "HALF_DAY",
+  "dates": "Dec 18-28",
+  "locations": [
+    {
+      "name": "University of Nairobi"
+    }
+  ]
+}
 ```
 
 #### D. Culture & Heritage Camps
-```sql
-INSERT INTO camps (name, category, camp_type, dates, created_date, created_by) VALUES
-('Cultural Heritage Experience', 'Culture & Heritage', 'HALF_DAY', 'Dec 12-22', CURRENT_TIMESTAMP, 'system'),
-('Traditional Arts & Crafts', 'Culture & Heritage', 'HALF_DAY', 'Dec 15-25', CURRENT_TIMESTAMP, 'system'),
-('Kenyan History Explorer', 'Culture & Heritage', 'BOOT_CAMP', 'Jan 2-12', CURRENT_TIMESTAMP, 'system'),
-('Language & Literature Camp', 'Culture & Heritage', 'HALF_DAY', 'Dec 28-Jan 7', CURRENT_TIMESTAMP, 'system');
+```json
+POST /api/camps
+Content-Type: application/json
+
+{
+  "name": "Cultural Heritage Experience",
+  "category": "Culture & Heritage",
+  "campType": "HALF_DAY",
+  "dates": "Dec 12-22",
+  "locations": [
+    {
+      "name": "National Museums"
+    }
+  ]
+}
+```
+
+```json
+POST /api/camps
+Content-Type: application/json
+
+{
+  "name": "Traditional Arts & Crafts",
+  "category": "Culture & Heritage",
+  "campType": "HALF_DAY",
+  "dates": "Dec 15-25",
+  "locations": [
+    {
+      "name": "National Museums"
+    }
+  ]
+}
+```
+
+```json
+POST /api/camps
+Content-Type: application/json
+
+{
+  "name": "Kenyan History Explorer",
+  "category": "Culture & Heritage",
+  "campType": "BOOT_CAMP",
+  "dates": "Jan 2-12",
+  "locations": [
+    {
+      "name": "Kisumu"
+    }
+  ]
+}
+```
+
+```json
+POST /api/camps
+Content-Type: application/json
+
+{
+  "name": "Language & Literature Camp",
+  "category": "Culture & Heritage",
+  "campType": "HALF_DAY",
+  "dates": "Dec 28-Jan 7",
+  "locations": [
+    {
+      "name": "Nairobi"
+    }
+  ]
+}
 ```
 
 #### E. Outdoor & Adventure Camps
-```sql
-INSERT INTO camps (name, category, camp_type, dates, created_date, created_by) VALUES
-('Outdoor Adventure Camp', 'Outdoor & Adventure', 'BOOT_CAMP', 'Dec 20-30', CURRENT_TIMESTAMP, 'system'),
-('Mount Kenya Expedition', 'Outdoor & Adventure', 'BOOT_CAMP', 'Jan 5-15', CURRENT_TIMESTAMP, 'system'),
-('Aberdare Wilderness Camp', 'Outdoor & Adventure', 'BOOT_CAMP', 'Dec 22-Jan 1', CURRENT_TIMESTAMP, 'system'),
-('Lake Naivasha Adventure', 'Outdoor & Adventure', 'HALF_DAY', 'Dec 26-Jan 5', CURRENT_TIMESTAMP, 'system');
+```json
+POST /api/camps
+Content-Type: application/json
+
+{
+  "name": "Outdoor Adventure Camp",
+  "category": "Outdoor & Adventure",
+  "campType": "BOOT_CAMP",
+  "dates": "Dec 20-30",
+  "locations": [
+    {
+      "name": "Aberdare National Park"
+    }
+  ]
+}
+```
+
+```json
+POST /api/camps
+Content-Type: application/json
+
+{
+  "name": "Mount Kenya Expedition",
+  "category": "Outdoor & Adventure",
+  "campType": "BOOT_CAMP",
+  "dates": "Jan 5-15",
+  "locations": [
+    {
+      "name": "Mount Kenya"
+    }
+  ]
+}
+```
+
+```json
+POST /api/camps
+Content-Type: application/json
+
+{
+  "name": "Aberdare Wilderness Camp",
+  "category": "Outdoor & Adventure",
+  "campType": "BOOT_CAMP",
+  "dates": "Dec 22-Jan 1",
+  "locations": [
+    {
+      "name": "Aberdare National Park"
+    }
+  ]
+}
+```
+
+```json
+POST /api/camps
+Content-Type: application/json
+
+{
+  "name": "Lake Naivasha Adventure",
+  "category": "Outdoor & Adventure",
+  "campType": "HALF_DAY",
+  "dates": "Dec 26-Jan 5",
+  "locations": [
+    {
+      "name": "Naivasha"
+    }
+  ]
+}
 ```
 
 ### Step 3: Populate Activities
