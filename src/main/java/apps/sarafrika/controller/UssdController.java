@@ -2,7 +2,9 @@ package apps.sarafrika.controller;
 
 import apps.sarafrika.dto.UserSession;
 import apps.sarafrika.service.SessionService;
+import apps.sarafrika.service.TrackingService;
 import apps.sarafrika.service.UssdMenuService;
+import apps.sarafrika.enums.InteractionType;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -29,6 +31,9 @@ public class UssdController {
 
     @Inject
     UssdMenuService ussdMenuService;
+
+    @Inject
+    TrackingService trackingService;
 
     @POST
     @Operation(
@@ -106,6 +111,10 @@ public class UssdController {
             )
             @FormParam("text") String text
     ) {
+        long startTime = System.currentTimeMillis();
+        String previousState = null;
+        String currentState = null;
+        
         try {
             LOG.infof("USSD Request - SessionId: %s, Phone: %s, Text: '%s'", 
                      sessionId, phoneNumber, text);
@@ -113,16 +122,31 @@ public class UssdController {
             UserSession session = sessionService.getSession(sessionId)
                     .orElse(new UserSession(sessionId, phoneNumber));
 
+            previousState = session.getCurrentState();
+            
             String response = ussdMenuService.processUssdInput(session, text);
+            
+            currentState = session.getCurrentState();
             
             sessionService.saveSession(sessionId, session);
 
             LOG.infof("USSD Response - SessionId: %s, Response: '%s'", sessionId, response);
             
+            long processingTime = System.currentTimeMillis() - startTime;
+            
+            trackingService.trackInteractionAsync(sessionId, phoneNumber, InteractionType.INPUT, 
+                    currentState, previousState, text, response, (int) processingTime, null, null);
+            
             return Response.ok(response).build();
 
         } catch (Exception e) {
             LOG.errorf(e, "Error processing USSD request for session %s", sessionId);
+            
+            long processingTime = System.currentTimeMillis() - startTime;
+            
+            trackingService.trackInteractionAsync(sessionId, phoneNumber, InteractionType.VALIDATION_ERROR, 
+                    currentState, previousState, text, null, (int) processingTime, e.getMessage(), null);
+            
             return Response.ok("END Sorry, we're experiencing technical difficulties. Please try again later.").build();
         }
     }
