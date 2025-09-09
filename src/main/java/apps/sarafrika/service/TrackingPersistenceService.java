@@ -69,14 +69,14 @@ public class TrackingPersistenceService {
         for (Object event : events) {
             try {
                 switch (event) {
-                    case UserInteraction interaction -> UserInteraction.persist(interaction);
-                    case SessionEvent sessionEvent -> SessionEvent.persist(sessionEvent);
-                    case NavigationEvent navigationEvent -> NavigationEvent.persist(navigationEvent);
-                    case PerformanceMetric performanceMetric -> PerformanceMetric.persist(performanceMetric);
+                    case UserInteraction interaction -> interaction.persist();
+                    case SessionEvent sessionEvent -> sessionEvent.persist();
+                    case NavigationEvent navigationEvent -> navigationEvent.persist();
+                    case PerformanceMetric performanceMetric -> performanceMetric.persist();
                     default -> LOG.debug("Unknown event type: " + event.getClass().getSimpleName());
                 }
             } catch (Exception e) {
-                LOG.debug("Failed to persist individual event", e);
+                LOG.error("Failed to persist individual event: " + event.getClass().getSimpleName(), e);
             }
         }
     }

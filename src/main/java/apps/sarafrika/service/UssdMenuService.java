@@ -5,6 +5,8 @@ import apps.sarafrika.entity.Activity;
 import apps.sarafrika.entity.Camp;
 import apps.sarafrika.entity.Registration;
 import apps.sarafrika.enums.CampType;
+import apps.sarafrika.enums.NavigationType;
+import apps.sarafrika.service.TrackingService;
 import apps.sarafrika.util.UssdResponseBuilder;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -25,6 +27,9 @@ public class UssdMenuService {
 
     @Inject
     RegistrationService registrationService;
+
+    @Inject
+    TrackingService trackingService;
 
     public String processUssdInput(UserSession session, String text) {
         
