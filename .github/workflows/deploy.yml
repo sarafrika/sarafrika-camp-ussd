@@ -49,23 +49,78 @@ jobs:
         
     - name: Copy deployment files
       run: |
-        sshpass -p '${{ secrets.SSH_PASSWORD }}' scp docker-compose.yml ${{ secrets.SSH_USER }}@${{ secrets.SERVER_HOST }}:~/products/camp-ussd/
+        sshpass -p '${{ secrets.SSH_PASSWORD }}' scp docker-compose.yml .env.example ${{ secrets.SSH_USER }}@${{ secrets.SERVER_HOST }}:~/products/camp-ussd/
         
-    - name: Create or update .env file
+    - name: Setup environment configuration
       run: |
         sshpass -p '${{ secrets.SSH_PASSWORD }}' ssh ${{ secrets.SSH_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
           cd ~/products/camp-ussd
           
-          # Create .env file if it doesn't exist, or update DOCKERHUB_USERNAME
+          # Create .env file from template if it doesn't exist
           if [ ! -f .env ]; then
-            cp .env.example .env 2>/dev/null || echo "# Environment variables" > .env
+            echo "📋 Creating .env file from .env.example template..."
+            cp .env.example .env
+            echo "⚠️  .env file created from template. Please configure the following required variables:"
+          else
+            echo "📋 .env file already exists. Validating configuration..."
+          fi
+        EOF
+        
+    - name: Validate environment configuration
+      run: |
+        sshpass -p '${{ secrets.SSH_PASSWORD }}' ssh ${{ secrets.SSH_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+          cd ~/products/camp-ussd
+          
+          # Define required environment variables
+          required_vars=(
+            "DATABASE_URL"
+            "DATABASE_USERNAME" 
+            "DATABASE_PASSWORD"
+            "AFRICAS_TALKING_USERNAME"
+            "AFRICAS_TALKING_API_KEY"
+            "AFRICAS_TALKING_USSD_SERVICE_CODE"
+            "MPESA_CONSUMER_KEY"
+            "MPESA_CONSUMER_SECRET"
+            "MPESA_SHORTCODE"
+            "MPESA_PASSKEY"
+          )
+          
+          missing_vars=()
+          placeholder_vars=()
+          
+          # Check each required variable
+          for var in "${required_vars[@]}"; do
+            if ! grep -q "^${var}=" .env; then
+              missing_vars+=("$var")
+            else
+              value=$(grep "^${var}=" .env | cut -d'=' -f2-)
+              # Check if value contains placeholder text or is empty
+              if [[ -z "$value" ]] || [[ "$value" =~ ^(your_|your-) ]]; then
+                placeholder_vars+=("$var")
+              fi
+            fi
+          done
+          
+          # Report missing variables
+          if [ ${#missing_vars[@]} -gt 0 ]; then
+            echo "❌ Missing required environment variables:"
+            printf "   - %s\n" "${missing_vars[@]}"
           fi
           
-          # Update or add DOCKERHUB_USERNAME
-          if grep -q "^DOCKERHUB_USERNAME=" .env; then
-            sed -i "s/^DOCKERHUB_USERNAME=.*/DOCKERHUB_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}/" .env
+          # Report placeholder values
+          if [ ${#placeholder_vars[@]} -gt 0 ]; then
+            echo "⚠️  Environment variables with placeholder values (need configuration):"
+            printf "   - %s\n" "${placeholder_vars[@]}"
+          fi
+          
+          # Fail if there are missing or unconfigured variables
+          if [ ${#missing_vars[@]} -gt 0 ] || [ ${#placeholder_vars[@]} -gt 0 ]; then
+            echo ""
+            echo "💡 Please update the .env file on the server at: ~/products/camp-ussd/.env"
+            echo "   Use the .env.example as a reference for required configuration."
+            exit 1
           else
-            echo "DOCKERHUB_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}" >> .env
+            echo "✅ All required environment variables are properly configured"
           fi
         EOF
         
