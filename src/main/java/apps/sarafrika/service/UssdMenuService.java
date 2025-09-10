@@ -45,11 +45,23 @@ public class UssdMenuService {
         if (text == null || text.trim().isEmpty()) {
             session.stateHistory.clear();
             session.pushState("main_menu");
+            // Track initial session start
+            trackingService.trackNavigationAsync(
+                session.sessionId, 
+                session.phoneNumber, 
+                null, 
+                "main_menu", 
+                NavigationType.DIRECT, 
+                null, 
+                null, 
+                null
+            );
             return showMainMenu();
         }
 
         String[] inputs = text.split("\\*");
         String lastInput = inputs[inputs.length - 1].trim();
+        String previousState = session.getCurrentState();
 
         if ("0".equals(lastInput)) {
             return handleBackNavigation(session);
@@ -58,7 +70,8 @@ public class UssdMenuService {
         String currentState = session.getCurrentState();
         LOG.infof("Processing state: %s, input: %s", currentState, lastInput);
 
-        return switch (currentState) {
+        // Process the input and get response
+        String response = switch (currentState) {
             case "main_menu" -> handleMainMenuInput(session, lastInput);
             case "select_camp" -> handleCampSelection(session, lastInput);
             case "select_location" -> handleLocationSelection(session, lastInput);
@@ -76,6 +89,24 @@ public class UssdMenuService {
             case "contact_support" -> handleContactSupportInput(session, lastInput);
             default -> "END Invalid session state. Please try again.";
         };
+
+        // Track navigation after processing (if state changed)
+        String newState = session.getCurrentState();
+        if (!currentState.equals(newState)) {
+            NavigationType navType = determineNavigationType(lastInput);
+            trackingService.trackNavigationAsync(
+                session.sessionId,
+                session.phoneNumber,
+                previousState,
+                newState,
+                navType,
+                lastInput,
+                null, // We don't track time yet
+                null  // No additional context for now
+            );
+        }
+
+        return response;
     }
 
     private String showMainMenu() {
@@ -442,8 +473,9 @@ public class UssdMenuService {
                 status = switch (order.status) {
                     case PAID -> "CLEARED";
                     case PENDING -> "PENDING";
+                    case CONFIRMED -> "CONFIRMED";
                     case CANCELLED -> "CANCELLED";
-                    case FAILED -> "FAILED";
+                    case REFUNDED -> "REFUNDED";
                 };
                 referenceCode = order.referenceCode;
             }
@@ -545,7 +577,20 @@ public class UssdMenuService {
     }
 
     private String handleBackNavigation(UserSession session) {
+        String currentState = session.getCurrentState();
         String previousState = session.popState();
+        
+        // Track back navigation
+        trackingService.trackNavigationAsync(
+            session.sessionId,
+            session.phoneNumber,
+            currentState,
+            previousState,
+            NavigationType.BACK,
+            "0",
+            null,
+            null
+        );
         
         return switch (previousState) {
             case "main_menu" -> showMainMenu();
@@ -566,6 +611,18 @@ public class UssdMenuService {
             case "confirm_registration" -> showRegistrationConfirmation(session);
             default -> showMainMenu();
         };
+    }
+
+    private NavigationType determineNavigationType(String input) {
+        if ("0".equals(input)) {
+            return NavigationType.BACK;
+        } else if ("99".equals(input)) {
+            return NavigationType.PAGINATION;
+        } else if ("4".equals(input)) {
+            return NavigationType.EXIT; // Exit from main menu
+        } else {
+            return NavigationType.FORWARD;
+        }
     }
 
     private boolean isValidPhoneNumber(String phoneNumber) {
