@@ -5,6 +5,7 @@ import io.quarkus.scheduler.Scheduled;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
+import jakarta.transaction.Transactional.TxType;
 import org.jboss.logging.Logger;
 
 import java.util.ArrayList;
@@ -23,33 +24,21 @@ public class TrackingPersistenceService {
     TrackingService trackingService;
 
     @Scheduled(every = "2s")
-    @Transactional
     public void processBatchEvents() {
         if (!trackingService.isTrackingEnabled()) {
             return;
         }
 
-        try {
-            List<Object> batch = drainEventQueue(BATCH_SIZE);
-            if (batch.isEmpty()) {
-                return;
-            }
+        List<Object> batch = drainEventQueue(BATCH_SIZE);
+        if (batch.isEmpty()) {
+            return;
+        }
 
-            persistBatch(batch);
-            successCount.addAndGet(batch.size());
-            
-            if (errorCount.get() > 0) {
-                errorCount.set(0);
-            }
-            
-        } catch (Exception e) {
-            int currentErrors = errorCount.incrementAndGet();
-            LOG.debug("Batch persistence failed, error count: " + currentErrors, e);
-            
-            if (currentErrors > 10) {
-                trackingService.disableTracking();
-                LOG.error("Disabling tracking due to persistent errors");
-            }
+        int successfulPersists = persistBatch(batch);
+        successCount.addAndGet(successfulPersists);
+        
+        if (errorCount.get() > 0 && successfulPersists > 0) {
+            errorCount.set(0);
         }
     }
 
@@ -65,19 +54,39 @@ public class TrackingPersistenceService {
         return batch;
     }
 
-    private void persistBatch(List<Object> events) {
+    private int persistBatch(List<Object> events) {
+        int successCount = 0;
+        int failureCount = 0;
+        
         for (Object event : events) {
             try {
-                switch (event) {
-                    case UserInteraction interaction -> interaction.persist();
-                    case SessionEvent sessionEvent -> sessionEvent.persist();
-                    case NavigationEvent navigationEvent -> navigationEvent.persist();
-                    case PerformanceMetric performanceMetric -> performanceMetric.persist();
-                    default -> LOG.debug("Unknown event type: " + event.getClass().getSimpleName());
-                }
+                persistSingleEvent(event);
+                successCount++;
             } catch (Exception e) {
+                failureCount++;
                 LOG.error("Failed to persist individual event: " + event.getClass().getSimpleName(), e);
             }
+        }
+        
+        if (failureCount > 0) {
+            int currentErrors = errorCount.addAndGet(failureCount);
+            if (currentErrors > 50) { // Increased threshold
+                trackingService.disableTracking();
+                LOG.error("Disabling tracking due to persistent errors: " + currentErrors);
+            }
+        }
+        
+        return successCount;
+    }
+    
+    @Transactional(value = TxType.REQUIRES_NEW)
+    private void persistSingleEvent(Object event) {
+        switch (event) {
+            case UserInteraction interaction -> interaction.persist();
+            case SessionEvent sessionEvent -> sessionEvent.persist();
+            case NavigationEvent navigationEvent -> navigationEvent.persist();
+            case PerformanceMetric performanceMetric -> performanceMetric.persist();
+            default -> LOG.debug("Unknown event type: " + event.getClass().getSimpleName());
         }
     }
 

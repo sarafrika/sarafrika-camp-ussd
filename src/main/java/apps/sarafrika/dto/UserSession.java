@@ -1,9 +1,11 @@
 package apps.sarafrika.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import java.util.*;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 @Schema(
     description = "User session data stored in Redis for USSD state management",
     example = """
