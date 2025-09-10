@@ -106,13 +106,13 @@ CON Camp Type:
 ```
 CON Young Musicians & Artists C... Camps:
 
-1. Consolata School - Kiambu, KSH 12,500
-2. Creative Integrated School - Nairobi, KSH 12,500
-3. Olerai Rongai School - Rongai, KSH 12,500
+1. Young Musicians & Artists Camp (YMAC)
+   Multiple locations available
 
-99. More >>
 0. Back
 ```
+
+**Note**: For YMAC, location selection occurs in the next step since it's a single camp offered at multiple school locations.
 
 **Backend Query:**
 ```sql
@@ -210,9 +210,9 @@ CON Enter participant's phone number:
 ```
 CON Registration Summary:
 
-Camp: YMAC Consolata School
-Location: Kiambu
-Dates: 17th-29th Nov
+Camp: Young Musicians & Artists Camp (YMAC)
+Location: Consolata School Kiambu
+Dates: Nov-Dec 2024
 Participant: John Doe
 Age: 16
 Fee: KSH 12,500
@@ -255,7 +255,7 @@ Thank you for choosing Camp Sarafrika!
 **Participant SMS:**
 ```
 Hi John,
-You are registered for YMAC Consolata School (Kiambu, 17th-29th Nov).
+You are registered for Young Musicians & Artists Camp (YMAC) at Consolata School Kiambu (Nov-Dec 2024).
 Ref: CS-A4T9B1. Fee: KSh 12,500.
 Complete payment via M-Pesa.
 Organizer Contact: 0712-345678.
@@ -264,7 +264,7 @@ Organizer Contact: 0712-345678.
 **Guardian SMS:**
 ```
 Hi Guardian,
-John Doe is registered for YMAC Consolata School (Kiambu, 17th-29th Nov).
+John Doe is registered for Young Musicians & Artists Camp (YMAC) at Consolata School Kiambu (Nov-Dec 2024).
 Ref: CS-A4T9B1. Fee: KSh 12,500.
 Please ensure payment completion.
 Contact: 0712-345678.
@@ -276,7 +276,7 @@ Contact: 0712-345678.
 ```
 CON Your Bookings:
 
-1. YMAC Consolata School - PENDING
+1. YMAC at Consolata School Kiambu - PENDING
    Ref: CS-A4T9B1
 2. Sports Excellence - PAID
    Ref: CS-B2C8D3

@@ -171,14 +171,24 @@ GET /api/camps?category=Sports
 [
   {
     "uuid": "456e7890-e89b-12d3-a456-426614174000",
-    "name": "YMAC Consolata School",
+    "name": "Young Musicians & Artists Camp (YMAC)",
     "category": "Young Musicians & Artists Camp (YMAC)",
     "campType": "HALF_DAY",
-    "dates": "17th-29th Nov",
+    "dates": "Nov-Dec 2024",
     "locations": [
       {
         "uuid": "123e4567-e89b-12d3-a456-426614174000",
-        "name": "Kiambu",
+        "name": "Consolata School Kiambu",
+        "fee": 12500.00
+      },
+      {
+        "uuid": "234e5678-e89b-12d3-a456-426614174001",
+        "name": "Creative Integrated School Nairobi",
+        "fee": 12500.00
+      },
+      {
+        "uuid": "345e6789-e89b-12d3-a456-426614174002",
+        "name": "Olerai Rongai School",
         "fee": 12500.00
       }
     ]
@@ -197,14 +207,19 @@ GET /api/camps?category=Sports
 ```json
 {
   "uuid": "456e7890-e89b-12d3-a456-426614174000",
-  "name": "YMAC Consolata School",
+  "name": "Young Musicians & Artists Camp (YMAC)",
   "category": "Young Musicians & Artists Camp (YMAC)",
   "campType": "HALF_DAY",
-  "dates": "17th-29th Nov",
+  "dates": "Nov-Dec 2024",
   "locations": [
     {
       "uuid": "123e4567-e89b-12d3-a456-426614174000",
-      "name": "Kiambu",
+      "name": "Consolata School Kiambu",
+      "fee": 12500.00
+    },
+    {
+      "uuid": "234e5678-e89b-12d3-a456-426614174001",
+      "name": "Creative Integrated School Nairobi",
       "fee": 12500.00
     }
   ],
@@ -225,13 +240,19 @@ GET /api/camps?category=Sports
 **Request Body:**
 ```json
 {
-  "name": "YMAC Consolata School",
+  "name": "Young Musicians & Artists Camp (YMAC)",
   "category": "Young Musicians & Artists Camp (YMAC)",
   "campType": "HALF_DAY",
-  "dates": "17th-29th Nov",
+  "dates": "Nov-Dec 2024",
   "locations": [
     {
-      "name": "Kiambu"
+      "name": "Consolata School Kiambu"
+    },
+    {
+      "name": "Creative Integrated School Nairobi"
+    },
+    {
+      "name": "Olerai Rongai School"
     }
   ]
 }
@@ -242,14 +263,24 @@ GET /api/camps?category=Sports
 HTTP 201
 {
   "uuid": "456e7890-e89b-12d3-a456-426614174000",
-  "name": "YMAC Consolata School",
+  "name": "Young Musicians & Artists Camp (YMAC)",
   "category": "Young Musicians & Artists Camp (YMAC)",
   "campType": "HALF_DAY",
-  "dates": "17th-29th Nov",
+  "dates": "Nov-Dec 2024",
   "locations": [
     {
       "uuid": "123e4567-e89b-12d3-a456-426614174000",
-      "name": "Kiambu",
+      "name": "Consolata School Kiambu",
+      "fee": 12500.00
+    },
+    {
+      "uuid": "234e5678-e89b-12d3-a456-426614174001",
+      "name": "Creative Integrated School Nairobi",
+      "fee": 12500.00
+    },
+    {
+      "uuid": "345e6789-e89b-12d3-a456-426614174002",
+      "name": "Olerai Rongai School",
       "fee": 12500.00
     }
   ]
@@ -273,10 +304,10 @@ HTTP 201
 **Request Body:**
 ```json
 {
-  "name": "Updated YMAC Consolata School",
+  "name": "Young Musicians & Artists Camp (YMAC) - Extended",
   "category": "Young Musicians & Artists Camp (YMAC)",
   "campType": "HALF_DAY",
-  "dates": "17th-30th Nov"
+  "dates": "Nov-Dec 2024 Extended"
 }
 ```
 
@@ -492,25 +523,18 @@ sequenceDiagram
     
     Note over Admin, Redis: Phase 2: Camp Categories (with Location Links)
     
-    Admin->>API: POST /api/camps (YMAC Consolata School)
-    API->>DB: SELECT locations WHERE name = 'Kiambu'
-    DB-->>API: Location found
-    API->>DB: INSERT INTO camps + camp_locations
-    DB-->>API: Camp created with UUID
-    API-->>Admin: 201 Created + Camp UUID + Location details
-    
-    Admin->>API: POST /api/camps (YMAC Creative Integrated)
-    API->>DB: SELECT locations WHERE name = 'Nairobi'
-    DB-->>API: Location found
-    API->>DB: INSERT INTO camps + camp_locations
-    DB-->>API: Camp created with UUID
-    API-->>Admin: 201 Created + Camp UUID + Location details
+    Admin->>API: POST /api/camps (Young Musicians & Artists Camp)
+    API->>DB: SELECT locations WHERE name IN ('Consolata School Kiambu', 'Creative Integrated School Nairobi', ...)
+    DB-->>API: Multiple locations found
+    API->>DB: INSERT INTO camps + camp_locations (multiple entries)
+    DB-->>API: Single YMAC camp created with UUID, linked to multiple locations
+    API-->>Admin: 201 Created + Camp UUID + All location details
     
     Note over Admin, Redis: Continue for all camps across 5 categories...
     
     Note over Admin, Redis: Phase 3: Activities (linked to Camps)
     
-    Admin->>API: POST /api/activities (Photography for YMAC camp)
+    Admin->>API: POST /api/activities (Photography for single YMAC camp)
     API->>DB: SELECT camps WHERE uuid = campUuid
     DB-->>API: Camp found and valid
     API->>DB: INSERT INTO activities
@@ -553,18 +577,34 @@ sequenceDiagram
 **Step 1-13: Create all locations with their fees**
 
 ```bash
-# Primary locations from PDF specification
+# YMAC School locations from PDF specification (all KSH 12,500)
 curl -X POST http://localhost:8080/api/locations \
   -H "Content-Type: application/json" \
-  -d '{"name": "Kiambu", "fee": 12500.00}'
+  -d '{"name": "Consolata School Kiambu", "fee": 12500.00}'
 
 curl -X POST http://localhost:8080/api/locations \
   -H "Content-Type: application/json" \
-  -d '{"name": "Nairobi", "fee": 12500.00}'
+  -d '{"name": "Creative Integrated School Nairobi", "fee": 12500.00}'
 
 curl -X POST http://localhost:8080/api/locations \
   -H "Content-Type: application/json" \
-  -d '{"name": "Rongai", "fee": 12500.00}'
+  -d '{"name": "Olerai Rongai School", "fee": 12500.00}'
+
+curl -X POST http://localhost:8080/api/locations \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Olerai Kiserian School", "fee": 12500.00}'
+
+curl -X POST http://localhost:8080/api/locations \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Garden Brook School Rongai", "fee": 12500.00}'
+
+curl -X POST http://localhost:8080/api/locations \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Chantilly School Rongai", "fee": 12500.00}'
+
+curl -X POST http://localhost:8080/api/locations \
+  -H "Content-Type: application/json" \
+  -d '{"name": "White Cottage School Rongai", "fee": 12500.00}'
 
 # Additional locations with varied pricing
 curl -X POST http://localhost:8080/api/locations \
@@ -620,32 +660,30 @@ curl -X POST http://localhost:8080/api/locations \
 }
 ```
 
-#### Phase 2: Camp Categories (22 camps total)
+#### Phase 2: Camp Categories (6 camps total)
 
-**YMAC Camps (7 camps):**
+**YMAC Camp (1 camp at multiple locations):**
 ```bash
-# Save the returned UUIDs from each call for use in activities
+# YMAC is ONE camp offered at multiple school locations
 curl -X POST http://localhost:8080/api/camps \
   -H "Content-Type: application/json" \
   -d '{
-    "name": "YMAC Consolata School",
+    "name": "Young Musicians & Artists Camp (YMAC)",
     "category": "Young Musicians & Artists Camp (YMAC)",
     "campType": "HALF_DAY",
-    "dates": "17th-29th Nov",
-    "locations": [{"name": "Kiambu"}]
+    "dates": "Various dates across locations",
+    "locations": [
+      {"name": "Consolata School Kiambu"},
+      {"name": "Creative Integrated School Nairobi"},
+      {"name": "Olerai Rongai School"},
+      {"name": "Olerai Kiserian School"},
+      {"name": "Garden Brook School Rongai"},
+      {"name": "Chantilly School Rongai"},
+      {"name": "White Cottage School Rongai"}
+    ]
   }'
 
-curl -X POST http://localhost:8080/api/camps \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "YMAC Creative Integrated School",
-    "category": "Young Musicians & Artists Camp (YMAC)",
-    "campType": "HALF_DAY",
-    "dates": "3rd-20th Nov",
-    "locations": [{"name": "Nairobi"}]
-  }'
-
-# Continue for all 7 YMAC camps...
+# Save the returned camp UUID for adding activities - all 18 activities belong to this one YMAC camp
 ```
 
 **Sports Camps (5 camps):**

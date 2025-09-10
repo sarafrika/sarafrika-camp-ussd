@@ -26,13 +26,13 @@ Use the Location Management API to create locations with standardized pricing:
 
 **Endpoint**: `POST /api/locations`
 
-**Primary locations from PDF specification:**
+**YMAC School Locations (Primary locations for the camp):**
 ```json
 POST /api/locations
 Content-Type: application/json
 
 {
-  "name": "Kiambu",
+  "name": "Consolata School Kiambu",
   "fee": 12500.00
 }
 ```
@@ -42,7 +42,7 @@ POST /api/locations
 Content-Type: application/json
 
 {
-  "name": "Nairobi", 
+  "name": "Creative Integrated School Nairobi", 
   "fee": 12500.00
 }
 ```
@@ -52,7 +52,47 @@ POST /api/locations
 Content-Type: application/json
 
 {
-  "name": "Rongai",
+  "name": "Olerai Rongai School",
+  "fee": 12500.00
+}
+```
+
+```json
+POST /api/locations
+Content-Type: application/json
+
+{
+  "name": "Olerai Kiserian School",
+  "fee": 12500.00
+}
+```
+
+```json
+POST /api/locations
+Content-Type: application/json
+
+{
+  "name": "Garden Brook School",
+  "fee": 12500.00
+}
+```
+
+```json
+POST /api/locations
+Content-Type: application/json
+
+{
+  "name": "Chantilly School",
+  "fee": 12500.00
+}
+```
+
+```json
+POST /api/locations
+Content-Type: application/json
+
+{
+  "name": "White Cottage School",
   "fee": 12500.00
 }
 ```
@@ -167,121 +207,37 @@ Based on the PDF specification, create camps for each category using the Camp Ma
 
 #### A. Young Musicians & Artists Camp (YMAC)
 
-**YMAC camps as specified in PDF:**
+**YMAC - Single camp offered at multiple school locations:**
 ```json
 POST /api/camps
 Content-Type: application/json
 
 {
-  "name": "YMAC Consolata School",
+  "name": "Young Musicians & Artists Camp (YMAC)",
   "category": "Young Musicians & Artists Camp (YMAC)",
   "campType": "HALF_DAY",
-  "dates": "17th-29th Nov",
+  "dates": "Nov-Dec 2024",
   "locations": [
     {
-      "name": "Kiambu"
-    }
-  ]
-}
-```
-
-```json
-POST /api/camps
-Content-Type: application/json
-
-{
-  "name": "YMAC Creative Integrated School",
-  "category": "Young Musicians & Artists Camp (YMAC)",
-  "campType": "HALF_DAY",
-  "dates": "3rd-20th Nov",
-  "locations": [
+      "name": "Consolata School Kiambu"
+    },
     {
-      "name": "Nairobi"
-    }
-  ]
-}
-```
-
-```json
-POST /api/camps
-Content-Type: application/json
-
-{
-  "name": "YMAC - Olerai Rongai School",
-  "category": "Young Musicians & Artists Camp (YMAC)",
-  "campType": "HALF_DAY",
-  "dates": "Dec 1st-12th",
-  "locations": [
+      "name": "Creative Integrated School Nairobi"
+    },
     {
-      "name": "Rongai"
-    }
-  ]
-}
-```
-
-```json
-POST /api/camps
-Content-Type: application/json
-
-{
-  "name": "YMAC - Olerai Kiserian School",
-  "category": "Young Musicians & Artists Camp (YMAC)",
-  "campType": "HALF_DAY",
-  "dates": "Dec 1st-12th",
-  "locations": [
+      "name": "Olerai Rongai School"
+    },
     {
-      "name": "Rongai"
-    }
-  ]
-}
-```
-
-```json
-POST /api/camps
-Content-Type: application/json
-
-{
-  "name": "YMAC - Garden Brook School",
-  "category": "Young Musicians & Artists Camp (YMAC)",
-  "campType": "HALF_DAY",
-  "dates": "Dec 1st-12th",
-  "locations": [
+      "name": "Olerai Kiserian School"
+    },
     {
-      "name": "Rongai"
-    }
-  ]
-}
-```
-
-```json
-POST /api/camps
-Content-Type: application/json
-
-{
-  "name": "YMAC - Chantilly School",
-  "category": "Young Musicians & Artists Camp (YMAC)",
-  "campType": "HALF_DAY",
-  "dates": "Dec 1st-12th",
-  "locations": [
+      "name": "Garden Brook School"
+    },
     {
-      "name": "Rongai"
-    }
-  ]
-}
-```
-
-```json
-POST /api/camps
-Content-Type: application/json
-
-{
-  "name": "YMAC - White Cottage School",
-  "category": "Young Musicians & Artists Camp (YMAC)",
-  "campType": "HALF_DAY",
-  "dates": "Dec 1st-12th",
-  "locations": [
+      "name": "Chantilly School"
+    },
     {
-      "name": "Rongai"
+      "name": "White Cottage School"
     }
   ]
 }
@@ -602,36 +558,121 @@ Content-Type: application/json
 Based on the comprehensive activity list from the PDF:
 
 #### YMAC Activities
-```sql
--- Get YMAC camp UUIDs for reference
-DO $$
-DECLARE
-    camp_record RECORD;
-BEGIN
-    FOR camp_record IN 
-        SELECT uuid FROM camps WHERE category = 'Young Musicians & Artists Camp (YMAC)'
-    LOOP
-        INSERT INTO activities (name, description, category, camp_uuid, created_date, created_by) VALUES
-        ('Know your Talent Beginners Program', 'Foundation program for discovering artistic talents', 'Foundation', camp_record.uuid, CURRENT_TIMESTAMP, 'system'),
-        ('Photography', 'Learn artistic photography techniques and composition', 'Visual Arts', camp_record.uuid, CURRENT_TIMESTAMP, 'system'),
-        ('Musical Theatre', 'Combine acting, singing, and dancing in theatrical productions', 'Performance', camp_record.uuid, CURRENT_TIMESTAMP, 'system'),
-        ('String Ensemble', 'Collaborative string instrument performance', 'Music', camp_record.uuid, CURRENT_TIMESTAMP, 'system'),
-        ('Marching Band', 'Synchronized musical and visual performance', 'Music', camp_record.uuid, CURRENT_TIMESTAMP, 'system'),
-        ('Pop, Rock & RnB', 'Contemporary music genres and performance', 'Music', camp_record.uuid, CURRENT_TIMESTAMP, 'system'),
-        ('Ballet', 'Classical dance technique and performance', 'Dance', camp_record.uuid, CURRENT_TIMESTAMP, 'system'),
-        ('Dance', 'Various dance styles and choreography', 'Dance', camp_record.uuid, CURRENT_TIMESTAMP, 'system'),
-        ('Piano Ensemble', 'Group piano performance and accompaniment', 'Music', camp_record.uuid, CURRENT_TIMESTAMP, 'system'),
-        ('Guitar Ensemble', 'Acoustic and electric guitar performance', 'Music', camp_record.uuid, CURRENT_TIMESTAMP, 'system'),
-        ('Jazz Band', 'Jazz music theory and ensemble performance', 'Music', camp_record.uuid, CURRENT_TIMESTAMP, 'system'),
-        ('Creative Writing', 'Storytelling, poetry, and literary creation', 'Literature', camp_record.uuid, CURRENT_TIMESTAMP, 'system'),
-        ('Visual Arts', 'Painting, drawing, and mixed media creation', 'Visual Arts', camp_record.uuid, CURRENT_TIMESTAMP, 'system'),
-        ('Deejaying', 'Music mixing and DJ techniques', 'Music Technology', camp_record.uuid, CURRENT_TIMESTAMP, 'system'),
-        ('Voice', 'Vocal training and performance techniques', 'Music', camp_record.uuid, CURRENT_TIMESTAMP, 'system'),
-        ('Drumline', 'Percussion ensemble and rhythmic performance', 'Music', camp_record.uuid, CURRENT_TIMESTAMP, 'system'),
-        ('Technical Theatre', 'Stage production, lighting, and sound', 'Technical', camp_record.uuid, CURRENT_TIMESTAMP, 'system'),
-        ('Songwriting & Recording', 'Music composition and studio recording', 'Music Technology', camp_record.uuid, CURRENT_TIMESTAMP, 'system');
-    END LOOP;
-END $$;
+```json
+-- Note: Activities are created via API for the single YMAC camp
+POST /api/activities
+Content-Type: application/json
+
+[
+  {
+    "name": "Know your Talent Beginners Program",
+    "description": "Foundation program for discovering artistic talents",
+    "category": "Foundation",
+    "campUuid": "<YMAC_CAMP_UUID>"
+  },
+  {
+    "name": "Photography",
+    "description": "Learn artistic photography techniques and composition",
+    "category": "Visual Arts",
+    "campUuid": "<YMAC_CAMP_UUID>"
+  },
+  {
+    "name": "Musical Theatre",
+    "description": "Combine acting, singing, and dancing in theatrical productions",
+    "category": "Performance",
+    "campUuid": "<YMAC_CAMP_UUID>"
+  },
+  {
+    "name": "String Ensemble",
+    "description": "Collaborative string instrument performance",
+    "category": "Music",
+    "campUuid": "<YMAC_CAMP_UUID>"
+  },
+  {
+    "name": "Marching Band",
+    "description": "Synchronized musical and visual performance",
+    "category": "Music",
+    "campUuid": "<YMAC_CAMP_UUID>"
+  },
+  {
+    "name": "Pop, Rock & RnB",
+    "description": "Contemporary music genres and performance",
+    "category": "Music",
+    "campUuid": "<YMAC_CAMP_UUID>"
+  },
+  {
+    "name": "Ballet",
+    "description": "Classical dance technique and performance",
+    "category": "Dance",
+    "campUuid": "<YMAC_CAMP_UUID>"
+  },
+  {
+    "name": "Dance",
+    "description": "Various dance styles and choreography",
+    "category": "Dance",
+    "campUuid": "<YMAC_CAMP_UUID>"
+  },
+  {
+    "name": "Piano Ensemble",
+    "description": "Group piano performance and accompaniment",
+    "category": "Music",
+    "campUuid": "<YMAC_CAMP_UUID>"
+  },
+  {
+    "name": "Guitar Ensemble",
+    "description": "Acoustic and electric guitar performance",
+    "category": "Music",
+    "campUuid": "<YMAC_CAMP_UUID>"
+  },
+  {
+    "name": "Jazz Band",
+    "description": "Jazz music theory and ensemble performance",
+    "category": "Music",
+    "campUuid": "<YMAC_CAMP_UUID>"
+  },
+  {
+    "name": "Creative Writing",
+    "description": "Storytelling, poetry, and literary creation",
+    "category": "Literature",
+    "campUuid": "<YMAC_CAMP_UUID>"
+  },
+  {
+    "name": "Visual Arts",
+    "description": "Painting, drawing, and mixed media creation",
+    "category": "Visual Arts",
+    "campUuid": "<YMAC_CAMP_UUID>"
+  },
+  {
+    "name": "Deejaying",
+    "description": "Music mixing and DJ techniques",
+    "category": "Music Technology",
+    "campUuid": "<YMAC_CAMP_UUID>"
+  },
+  {
+    "name": "Voice",
+    "description": "Vocal training and performance techniques",
+    "category": "Music",
+    "campUuid": "<YMAC_CAMP_UUID>"
+  },
+  {
+    "name": "Drumline",
+    "description": "Percussion ensemble and rhythmic performance",
+    "category": "Music",
+    "campUuid": "<YMAC_CAMP_UUID>"
+  },
+  {
+    "name": "Technical Theatre",
+    "description": "Stage production, lighting, and sound",
+    "category": "Technical",
+    "campUuid": "<YMAC_CAMP_UUID>"
+  },
+  {
+    "name": "Songwriting & Recording",
+    "description": "Music composition and studio recording",
+    "category": "Music Technology",
+    "campUuid": "<YMAC_CAMP_UUID>"
+  }
+]
 ```
 
 #### Sports Activities
@@ -676,19 +717,15 @@ END $$;
 
 ### Step 4: Link Camps to Locations
 
+**Note:** Camp-location relationships are automatically established through the API when creating camps with location arrays.
+
 ```sql
--- Link YMAC camps to their specified locations
-INSERT INTO camp_locations (camp_id, location_id)
-SELECT c.id, l.id FROM camps c, locations l 
-WHERE c.name = 'YMAC Consolata School' AND l.name = 'Kiambu';
-
-INSERT INTO camp_locations (camp_id, location_id)
-SELECT c.id, l.id FROM camps c, locations l 
-WHERE c.name = 'YMAC Creative Integrated School' AND l.name = 'Nairobi';
-
-INSERT INTO camp_locations (camp_id, location_id)
-SELECT c.id, l.id FROM camps c, locations l 
-WHERE c.name LIKE 'YMAC -%' AND l.name = 'Rongai';
+-- Verify YMAC camp is linked to all school locations
+SELECT c.name as camp_name, l.name as location_name, l.fee
+FROM camps c
+JOIN camp_locations cl ON c.id = cl.camp_id
+JOIN locations l ON cl.location_id = l.id
+WHERE c.name = 'Young Musicians & Artists Camp (YMAC)';
 
 -- Link Sports camps to appropriate locations
 INSERT INTO camp_locations (camp_id, location_id)
@@ -783,7 +820,7 @@ AND c.is_deleted = FALSE;
 SELECT a.name, a.description
 FROM activities a
 JOIN camps c ON a.camp_uuid = c.uuid
-WHERE c.name = 'YMAC Consolata School'
+WHERE c.name = 'Young Musicians & Artists Camp (YMAC)'
 AND a.is_deleted = FALSE
 AND a.is_available = TRUE;
 ```
