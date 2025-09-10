@@ -67,6 +67,7 @@ public class CampController {
                                 "uuid": "550e8400-e29b-41d4-a716-446655440000",
                                 "name": "Summer Photography Camp",
                                 "camp_type": "HALF_DAY",
+                                "location_uuids": ["550e8400-e29b-41d4-a716-446655440001"],
                                 "created_date": "2024-09-10T10:00:00",
                                 "created_by": "api",
                                 "updated_date": "2024-09-10T10:00:00",
@@ -115,6 +116,7 @@ public class CampController {
                             "uuid": "550e8400-e29b-41d4-a716-446655440000",
                             "name": "Summer Photography Camp",
                             "camp_type": "HALF_DAY",
+                            "location_uuids": ["550e8400-e29b-41d4-a716-446655440001"],
                             "created_date": "2024-09-10T10:00:00",
                             "created_by": "api",
                             "updated_date": "2024-09-10T10:00:00",
@@ -209,6 +211,7 @@ public class CampController {
                             "uuid": "550e8400-e29b-41d4-a716-446655440000",
                             "name": "Summer Photography Camp",
                             "camp_type": "HALF_DAY",
+                            "location_uuids": ["550e8400-e29b-41d4-a716-446655440001"],
                             "created_date": "2024-09-10T10:00:00",
                             "created_by": "api",
                             "updated_date": "2024-09-10T10:00:00",
@@ -250,7 +253,8 @@ public class CampController {
                     value = """
                     {
                         "name": "Summer Photography Camp",
-                        "camp_type": "HALF_DAY"
+                        "camp_type": "HALF_DAY",
+                        "location_uuids": ["550e8400-e29b-41d4-a716-446655440001", "660e8400-e29b-41d4-a716-446655440002"]
                     }
                     """
                 )
@@ -260,6 +264,11 @@ public class CampController {
         try {
             Camp camp = campFactory.toEntity(campDto);
             camp.createdBy = "api";
+            
+            if (campDto.locationUuids != null) {
+                campFactory.setLocationsFromUuids(camp, campDto.locationUuids);
+            }
+            
             Camp createdCamp = campService.createCamp(camp);
             
             CampDto responseDto = campFactory.fromEntity(createdCamp);
@@ -296,6 +305,7 @@ public class CampController {
                             "uuid": "550e8400-e29b-41d4-a716-446655440000",
                             "name": "Advanced Photography Camp",
                             "camp_type": "BOOT_CAMP",
+                            "location_uuids": ["550e8400-e29b-41d4-a716-446655440001"],
                             "created_date": "2024-09-10T10:00:00",
                             "created_by": "api",
                             "updated_date": "2024-09-10T11:00:00",
@@ -356,7 +366,8 @@ public class CampController {
                         value = """
                         {
                             "name": "Advanced Photography Camp",
-                            "camp_type": "BOOT_CAMP"
+                            "camp_type": "BOOT_CAMP",
+                            "location_uuids": ["550e8400-e29b-41d4-a716-446655440001"]
                         }
                         """
                     )
@@ -376,6 +387,10 @@ public class CampController {
             
             campFactory.updateEntity(existingCamp, campDto);
             existingCamp.updatedBy = "api";
+            if (campDto.locationUuids != null) {
+                campFactory.setLocationsFromUuids(existingCamp, campDto.locationUuids);
+            }
+            
             Camp updatedCamp = campService.updateCamp(existingCamp);
             
             CampDto responseDto = campFactory.fromEntity(updatedCamp);
