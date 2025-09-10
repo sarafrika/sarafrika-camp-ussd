@@ -80,7 +80,7 @@ public class TrackingPersistenceService {
     }
     
     @Transactional(value = TxType.REQUIRES_NEW)
-    private void persistSingleEvent(Object event) {
+    public void persistSingleEvent(Object event) {
         switch (event) {
             case UserInteraction interaction -> interaction.persist();
             case SessionEvent sessionEvent -> sessionEvent.persist();

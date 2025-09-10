@@ -16,6 +16,9 @@ public class Location extends BaseEntity {
     @Column(name = "fee")
     public BigDecimal fee;
 
+    @Column(name = "dates")
+    public String dates;
+
     @ManyToMany(mappedBy = "locations")
     public List<Camp> camps;
 

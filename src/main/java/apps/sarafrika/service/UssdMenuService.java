@@ -57,9 +57,8 @@ public class UssdMenuService {
 
         return switch (currentState) {
             case "main_menu" -> handleMainMenuInput(session, lastInput);
-            case "select_category" -> handleCategorySelection(session, lastInput);
-            case "select_camp_type" -> handleCampTypeSelection(session, lastInput);
             case "select_camp" -> handleCampSelection(session, lastInput);
+            case "select_location" -> handleLocationSelection(session, lastInput);
             case "select_activity" -> handleActivitySelection(session, lastInput);
             case "enter_full_name" -> handleFullNameInput(session, lastInput);
             case "enter_age" -> handleAgeInput(session, lastInput);
@@ -89,9 +88,9 @@ public class UssdMenuService {
     private String handleMainMenuInput(UserSession session, String input) {
         return switch (input) {
             case "1" -> {
-                session.pushState("select_category");
+                session.pushState("select_camp");
                 session.resetPagination();
-                yield showCategorySelection();
+                yield showCampSelection();
             }
             case "2" -> {
                 session.pushState("my_bookings");
@@ -106,10 +105,23 @@ public class UssdMenuService {
         };
     }
 
+    private String showCampSelection() {
+        List<String> campNames = campService.getDistinctCampNames();
+        
+        StringBuilder response = new StringBuilder("CON Select a camp:\n\n");
+        
+        for (int i = 0; i < campNames.size(); i++) {
+            response.append(String.format("%d. %s\n", i + 1, campNames.get(i)));
+        }
+        
+        response.append("\n0. Back");
+        return response.toString();
+    }
+
     private String showCategorySelection() {
         List<String> categories = campService.getDistinctCategories();
         
-        StringBuilder response = new StringBuilder("CON Select a camp category:\n\n");
+        StringBuilder response = new StringBuilder("CON Select a category:\n\n");
         
         for (int i = 0; i < categories.size(); i++) {
             response.append(String.format("%d. %s\n", i + 1, categories.get(i)));
@@ -192,29 +204,69 @@ public class UssdMenuService {
 
     private String handleCampSelection(UserSession session, String input) {
         try {
-            int selection = Integer.parseInt(input);
-            String category = session.getStringData("selectedCategory");
+            List<String> campNames = campService.getDistinctCampNames();
+            int selection = Integer.parseInt(input) - 1;
             
-            if (selection == 99) {
-                session.incrementPagination(PAGE_SIZE);
-                return showCampSelection(session, category, session.paginationOffset);
+            if (selection >= 0 && selection < campNames.size()) {
+                String selectedCampName = campNames.get(selection);
+                Camp camp = campService.findByName(selectedCampName);
+                if (camp != null) {
+                    session.putData("selectedCampUuid", camp.uuid.toString());
+                    session.pushState("select_location");
+                    return showLocationSelection(session, camp);
+                }
+            }
+            return "CON Invalid selection. Please try again.\n\n" + showCampSelection();
+        } catch (NumberFormatException e) {
+            return "CON Invalid input. Please enter a number.\n\n" + showCampSelection();
+        }
+    }
+
+    private String handleLocationSelection(UserSession session, String input) {
+        try {
+            String campUuid = session.getStringData("selectedCampUuid");
+            Camp camp = campService.findByUuid(UUID.fromString(campUuid));
+            
+            if (camp == null || camp.locations == null) {
+                return "END Camp not found.";
             }
             
-            if (selection >= 1 && selection <= session.currentMenuItems.size()) {
-                String campId = session.currentMenuItems.get(selection - 1);
-                session.putData("selectedCampUuid", campId);
+            int selection = Integer.parseInt(input) - 1;
+            
+            if (selection >= 0 && selection < camp.locations.size()) {
+                var selectedLocation = camp.locations.get(selection);
+                session.putData("selectedLocationId", selectedLocation.uuid);
                 session.pushState("select_activity");
-                session.resetPagination();
-                return showActivitySelection(session, UUID.fromString(campId));
+                return showActivitySelection(session, UUID.fromString(campUuid));
             } else {
-                return "CON Invalid selection. Please try again.\n\n" + 
-                       showCampSelection(session, category, session.paginationOffset);
+                return "CON Invalid selection. Please try again.\n\n" + showLocationSelection(session, camp);
             }
         } catch (NumberFormatException e) {
-            String category = session.getStringData("selectedCategory");
-            return "CON Invalid input. Please enter a number.\n\n" + 
-                   showCampSelection(session, category, session.paginationOffset);
+            String campUuid = session.getStringData("selectedCampUuid");
+            Camp camp = campService.findByUuid(UUID.fromString(campUuid));
+            return "CON Invalid input. Please enter a number.\n\n" + showLocationSelection(session, camp);
         }
+    }
+
+    private String showLocationSelection(UserSession session, Camp camp) {
+        if (camp.locations == null || camp.locations.isEmpty()) {
+            session.pushState("select_activity");
+            return showActivitySelection(session, camp.uuid);
+        }
+        
+        StringBuilder response = new StringBuilder("CON Select Location:\n\n");
+        
+        for (int i = 0; i < camp.locations.size(); i++) {
+            var location = camp.locations.get(i);
+            response.append(String.format("%d. %s - KSH %.0f\n", 
+                i + 1, location.name, location.fee));
+            if (location.dates != null && !location.dates.isEmpty()) {
+                response.append(String.format("   Dates: %s\n", location.dates));
+            }
+        }
+        
+        response.append("\n0. Back");
+        return response.toString();
     }
 
     private String handleFullNameInput(UserSession session, String input) {
@@ -283,7 +335,16 @@ public class UssdMenuService {
         StringBuilder response = new StringBuilder("CON Registration Summary:\n\n");
         response.append(String.format("Camp: %s\n", camp.name));
         response.append(String.format("Location: %s\n", locationName));
-        response.append(String.format("Dates: %s\n", camp.dates));
+        // Get dates from the selected location
+        String dates = "Not specified";
+        UUID locationUuid = (UUID) session.getData("selectedLocationId");
+        if (locationUuid != null) {
+            var location = locationService.findByUuid(locationUuid);
+            if (location != null && location.dates != null) {
+                dates = location.dates;
+            }
+        }
+        response.append(String.format("Dates: %s\n", dates));
         response.append(String.format("Participant: %s\n", session.getStringData("participantName")));
         response.append(String.format("Age: %s\n", session.getStringData("participantAge")));
         response.append(String.format("Fee: KSH %s\n\n", fee));

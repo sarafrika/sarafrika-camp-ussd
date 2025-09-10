@@ -14,14 +14,8 @@ public class Camp extends BaseEntity {
     @Column(name = "name")
     public String name;
 
-    @Column(name = "category")
-    public String category;
-
     @Column(name = "camp_type")
     public CampType campType;
-
-    @Column(name = "dates")
-    public String dates;
 
     @ManyToMany
     @JoinTable(
@@ -37,12 +31,8 @@ public class Camp extends BaseEntity {
     @OneToMany(mappedBy = "camp", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     public List<Registration> registrations;
 
-    public static PanacheQuery<Camp> findByCategory(String category) {
-        return find("category = ?1 and isDeleted = false", category);
-    }
-
-    public static PanacheQuery<Camp> findActiveByCategory(String category) {
-        return find("category = ?1 and isDeleted = false", category);
+    public static PanacheQuery<Camp> findByName(String name) {
+        return find("name = ?1 and isDeleted = false", name);
     }
 
     public static PanacheQuery<Camp> findAllActive() {
@@ -53,9 +43,9 @@ public class Camp extends BaseEntity {
         return find("uuid = ?1 and isDeleted = false", uuid).firstResult();
     }
 
-    public static List<String> findDistinctCategories() {
+    public static List<String> findDistinctNames() {
         return getEntityManager()
-                .createQuery("SELECT DISTINCT c.category FROM Camp c WHERE c.isDeleted = false", String.class)
+                .createQuery("SELECT DISTINCT c.name FROM Camp c WHERE c.isDeleted = false", String.class)
                 .getResultList();
     }
 }

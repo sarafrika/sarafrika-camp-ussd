@@ -10,14 +10,12 @@ import java.util.UUID;
 @ApplicationScoped
 public class CampService {
 
-    public List<String> getDistinctCategories() {
-        return Camp.findDistinctCategories();
+    public List<String> getDistinctCampNames() {
+        return Camp.findDistinctNames();
     }
 
-    public List<Camp> getCampsByCategory(String category, int offset, int limit) {
-        return Camp.findByCategory(category)
-                  .page(Page.of(offset / limit, limit))
-                  .list();
+    public Camp findByName(String name) {
+        return Camp.findByName(name).firstResult();
     }
 
     public Camp findByUuid(UUID uuid) {
@@ -45,5 +43,17 @@ public class CampService {
         if (camp != null) {
             camp.softDelete(deletedBy);
         }
+    }
+
+    public List<String> getDistinctCategories() {
+        // Camp categories are the camp names themselves
+        return getDistinctCampNames();
+    }
+
+    public List<Camp> getCampsByCategory(String category, int offset, int limit) {
+        // Since categories are camp names, find camps by name
+        return Camp.find("name = ?1 and isDeleted = false", category)
+                .page(Page.of(offset / limit, limit))
+                .list();
     }
 }
