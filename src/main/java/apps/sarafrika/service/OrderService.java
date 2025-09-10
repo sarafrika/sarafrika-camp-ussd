@@ -37,10 +37,12 @@ public class OrderService {
     }
 
     @Transactional
-    public Order createOrder(Registration registration, BigDecimal amount) {
+    public Order createOrder(Registration registration, UUID activityUuid, UUID locationUuid, BigDecimal amount) {
         Order order = new Order();
         
         order.registrationUuid = registration.uuid;
+        order.selectedActivityUuid = activityUuid;
+        order.selectedLocationUuid = locationUuid;
         order.orderAmount = amount;
         order.referenceCode = generateReferenceCode();
         order.status = OrderStatus.PENDING;

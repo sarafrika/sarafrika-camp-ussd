@@ -22,6 +22,20 @@ public class Order extends BaseEntity {
     @JoinColumn(name = "registration_uuid", referencedColumnName = "uuid", insertable = false, updatable = false)
     public Registration registration;
 
+    @Column(name = "selected_activity_uuid")
+    public UUID selectedActivityUuid;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "selected_activity_uuid", referencedColumnName = "uuid", insertable = false, updatable = false)
+    public Activity selectedActivity;
+
+    @Column(name = "selected_location_uuid")
+    public UUID selectedLocationUuid;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "selected_location_uuid", referencedColumnName = "uuid", insertable = false, updatable = false)
+    public Location selectedLocation;
+
     @Column(name = "order_amount")
     public BigDecimal orderAmount;
 

@@ -29,19 +29,6 @@ public class Registration extends BaseEntity {
     @JoinColumn(name = "camp_uuid", referencedColumnName = "uuid", insertable = false, updatable = false)
     public Camp camp;
 
-    @Column(name = "selected_activity_uuid")
-    public UUID selectedActivityUuid;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "selected_activity_uuid", referencedColumnName = "uuid", insertable = false, updatable = false)
-    public Activity selectedActivity;
-
-    @Column(name = "selected_location_uuid")
-    public UUID selectedLocationUuid;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "selected_location_uuid", referencedColumnName = "uuid", insertable = false, updatable = false)
-    public Location selectedLocation;
 
     @Column(name = "registration_date")
     public LocalDateTime registrationDate = LocalDateTime.now();

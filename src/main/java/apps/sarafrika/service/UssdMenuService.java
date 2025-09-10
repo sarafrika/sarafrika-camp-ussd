@@ -359,25 +359,27 @@ public class UssdMenuService {
             return "END Camp not found. Please try again.";
         }
         
+        UUID locationUuid = (UUID) session.getData("selectedLocationId");
         String locationName = "";
         String fee = "0";
-        if (camp.locations != null && !camp.locations.isEmpty()) {
-            locationName = camp.locations.get(0).name;
-            fee = String.format("%.0f", camp.locations.get(0).fee);
+        String dates = "Not specified";
+        
+        if (locationUuid != null) {
+            var location = locationService.findByUuid(locationUuid);
+            if (location != null) {
+                locationName = location.name;
+                if (location.fee != null) {
+                    fee = String.format("%.0f", location.fee);
+                }
+                if (location.dates != null) {
+                    dates = location.dates;
+                }
+            }
         }
         
         StringBuilder response = new StringBuilder("CON Registration Summary:\n\n");
         response.append(String.format("Camp: %s\n", camp.name));
         response.append(String.format("Location: %s\n", locationName));
-        // Get dates from the selected location
-        String dates = "Not specified";
-        UUID locationUuid = (UUID) session.getData("selectedLocationId");
-        if (locationUuid != null) {
-            var location = locationService.findByUuid(locationUuid);
-            if (location != null && location.dates != null) {
-                dates = location.dates;
-            }
-        }
         response.append(String.format("Dates: %s\n", dates));
         response.append(String.format("Participant: %s\n", session.getStringData("participantName")));
         response.append(String.format("Age: %s\n", session.getStringData("participantAge")));

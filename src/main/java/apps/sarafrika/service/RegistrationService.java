@@ -43,18 +43,15 @@ public class RegistrationService {
         registration.participantPhone = session.getStringData("participantPhone");
         registration.guardianPhone = session.getStringData("guardianPhone");
         registration.campUuid = camp.uuid;
-        
-        // Set activity and location from session
-        UUID activityUuid = (UUID) session.getData("selectedActivityUuid");
-        UUID locationUuid = (UUID) session.getData("selectedLocationId");
-        
-        registration.selectedActivityUuid = activityUuid;
-        registration.selectedLocationUuid = locationUuid;
         registration.createdBy = "USSD_SYSTEM";
         
         registration.persist();
         
-        // Create order for payment tracking
+        // Get activity and location from session for order creation
+        UUID activityUuid = (UUID) session.getData("selectedActivityUuid");
+        UUID locationUuid = (UUID) session.getData("selectedLocationId");
+        
+        // Create order for payment tracking with activity and location
         BigDecimal orderAmount = BigDecimal.ZERO;
         if (locationUuid != null) {
             var location = locationService.findByUuid(locationUuid);
@@ -63,7 +60,7 @@ public class RegistrationService {
             }
         }
         
-        Order order = orderService.createOrder(registration, orderAmount);
+        Order order = orderService.createOrder(registration, activityUuid, locationUuid, orderAmount);
         
         return registration;
     }
