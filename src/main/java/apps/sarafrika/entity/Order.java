@@ -12,8 +12,8 @@ import java.util.UUID;
 @Table(name = "orders")
 public class Order extends BaseEntity {
 
-    @Column(name = "order_code")
-    public String orderCode;
+    @Column(name = "reference_code", unique = true)
+    public String referenceCode;
 
     @Column(name = "registration_uuid")
     public UUID registrationUuid;
@@ -31,11 +31,14 @@ public class Order extends BaseEntity {
     @Column(name = "order_date")
     public LocalDateTime orderDate = LocalDateTime.now();
 
+    @Column(name = "payment_date")
+    public LocalDateTime paymentDate;
+
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     public List<Payment> payments;
 
-    public static PanacheQuery<Order> findByOrderCode(String orderCode) {
-        return find("orderCode = ?1 and isDeleted = false", orderCode);
+    public static PanacheQuery<Order> findByReferenceCode(String referenceCode) {
+        return find("referenceCode = ?1 and isDeleted = false", referenceCode);
     }
 
     public static PanacheQuery<Order> findByStatus(OrderStatus status) {
@@ -48,5 +51,19 @@ public class Order extends BaseEntity {
 
     public static PanacheQuery<Order> findAllActive() {
         return find("isDeleted = false");
+    }
+
+    public void markAsPaid() {
+        this.status = OrderStatus.PAID;
+        this.paymentDate = LocalDateTime.now();
+        this.updatedDate = LocalDateTime.now();
+    }
+
+    public boolean isPaid() {
+        return OrderStatus.PAID.equals(this.status);
+    }
+
+    public boolean isPending() {
+        return OrderStatus.PENDING.equals(this.status);
     }
 }

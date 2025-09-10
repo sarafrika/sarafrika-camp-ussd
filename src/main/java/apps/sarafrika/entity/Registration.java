@@ -2,8 +2,8 @@ package apps.sarafrika.entity;
 
 import io.quarkus.hibernate.orm.panache.PanacheQuery;
 import jakarta.persistence.*;
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -29,43 +29,35 @@ public class Registration extends BaseEntity {
     @JoinColumn(name = "camp_uuid", referencedColumnName = "uuid", insertable = false, updatable = false)
     public Camp camp;
 
-    @Column(name = "selected_activity")
-    public String selectedActivity;
+    @Column(name = "selected_activity_uuid")
+    public UUID selectedActivityUuid;
 
-    @Column(name = "fee_paid")
-    public BigDecimal feePaid;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "selected_activity_uuid", referencedColumnName = "uuid", insertable = false, updatable = false)
+    public Activity selectedActivity;
 
-    @Column(name = "reference_code")
-    public String referenceCode;
+    @Column(name = "selected_location_uuid")
+    public UUID selectedLocationUuid;
 
-    @Column(name = "status")
-    public String status = "PENDING";
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "selected_location_uuid", referencedColumnName = "uuid", insertable = false, updatable = false)
+    public Location selectedLocation;
 
     @Column(name = "registration_date")
     public LocalDateTime registrationDate = LocalDateTime.now();
 
-    @Column(name = "payment_date")
-    public LocalDateTime paymentDate;
-
-    public static PanacheQuery<Registration> findByReferenceCode(String referenceCode) {
-        return find("referenceCode = ?1 and isDeleted = false", referenceCode);
-    }
+    @OneToMany(mappedBy = "registration", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    public List<Order> orders;
 
     public static PanacheQuery<Registration> findByParticipantPhone(String phone) {
         return find("participantPhone = ?1 and isDeleted = false", phone);
     }
 
-    public static PanacheQuery<Registration> findByStatus(String status) {
-        return find("status = ?1 and isDeleted = false", status);
+    public static PanacheQuery<Registration> findAllActive() {
+        return find("isDeleted = false");
     }
 
     public boolean isMinor() {
         return participantAge != null && participantAge < 18;
-    }
-
-    public void markAsPaid() {
-        this.status = "PAID";
-        this.paymentDate = LocalDateTime.now();
-        this.updatedDate = LocalDateTime.now();
     }
 }

@@ -37,6 +37,9 @@ public class UssdMenuService {
     @Inject
     LocationService locationService;
 
+    @Inject
+    OrderService orderService;
+
     public String processUssdInput(UserSession session, String text) {
         
         if (text == null || text.trim().isEmpty()) {
@@ -368,6 +371,14 @@ public class UssdMenuService {
         try {
             Registration registration = registrationService.createRegistration(session);
             
+            // Get the order that was created with the registration
+            var orders = orderService.findByRegistrationUuid(registration.uuid);
+            if (orders.isEmpty()) {
+                throw new RuntimeException("Order not created for registration");
+            }
+            
+            var order = orders.get(0); // Get the first (and should be only) order
+            
             // Send SMS notifications
             String participantPhone = session.getStringData("participantPhone");
             String guardianPhone = session.getStringData("guardianPhone");
@@ -378,7 +389,7 @@ public class UssdMenuService {
                 participantPhone, 
                 participantName, 
                 registration.camp.name, 
-                registration.referenceCode
+                order.referenceCode
             );
             
             // Send notification SMS to guardian if different phone number
@@ -387,7 +398,7 @@ public class UssdMenuService {
                     guardianPhone, 
                     participantName, 
                     registration.camp.name, 
-                    registration.referenceCode
+                    order.referenceCode
                 );
             }
             
@@ -400,7 +411,7 @@ public class UssdMenuService {
                 You will receive SMS confirmations.
                 
                 Thank you for choosing Camp Sarafrika!""",
-                registration.referenceCode);
+                order.referenceCode);
                 
         } catch (Exception e) {
             LOG.errorf(e, "Failed to create registration for session %s", session.sessionId);
@@ -419,8 +430,26 @@ public class UssdMenuService {
         
         for (int i = 0; i < Math.min(registrations.size(), 3); i++) {
             Registration reg = registrations.get(i);
+            
+            // Get the order for this registration to show payment status
+            var orders = orderService.findByRegistrationUuid(reg.uuid);
+            String status = "PENDING";
+            String referenceCode = "N/A";
+            
+            if (!orders.isEmpty()) {
+                var order = orders.get(0);
+                // Map OrderStatus to user-friendly terms
+                status = switch (order.status) {
+                    case PAID -> "CLEARED";
+                    case PENDING -> "PENDING";
+                    case CANCELLED -> "CANCELLED";
+                    case FAILED -> "FAILED";
+                };
+                referenceCode = order.referenceCode;
+            }
+            
             response.append(String.format("%d. %s - %s\n   Ref: %s\n", 
-                i + 1, reg.camp.name, reg.status, reg.referenceCode));
+                i + 1, reg.camp.name, status, referenceCode));
         }
         
         response.append("\n0. Back");
