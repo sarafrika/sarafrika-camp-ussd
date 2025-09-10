@@ -48,7 +48,14 @@ public class RegistrationService {
         registration.participantPhone = session.getStringData("participantPhone");
         registration.guardianPhone = session.getStringData("guardianPhone");
         registration.campUuid = camp.uuid;
-        registration.feePaid = camp.fee;
+        
+        // Get fee from the camp's first location (since location-based pricing)
+        BigDecimal fee = BigDecimal.ZERO;
+        if (camp.locations != null && !camp.locations.isEmpty()) {
+            fee = camp.locations.get(0).fee;
+        }
+        registration.feePaid = fee;
+        
         registration.referenceCode = generateReferenceCode();
         registration.status = "PENDING";
         registration.createdBy = "USSD_SYSTEM";

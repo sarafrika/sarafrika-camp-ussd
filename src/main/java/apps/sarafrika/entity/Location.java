@@ -27,7 +27,7 @@ public class Location extends BaseEntity {
         return find("uuid = ?1 and isDeleted = false", uuid).firstResult();
     }
 
-    public static List<Location> findAll() {
+    public static List<Location> listActive() {
         return find("isDeleted = false").list();
     }
 }
