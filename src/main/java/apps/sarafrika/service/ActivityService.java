@@ -13,9 +13,6 @@ public class ActivityService {
         return Activity.findByCampUuid(campUuid).list();
     }
 
-    public List<Activity> getActivitiesByCategory(String category) {
-        return Activity.findByCategory(category).list();
-    }
 
     public Activity findByUuid(UUID uuid) {
         return Activity.findByUuid(uuid);
@@ -44,7 +41,4 @@ public class ActivityService {
         }
     }
 
-    public List<String> getDistinctCategories() {
-        return Activity.findDistinctCategories();
-    }
 }
