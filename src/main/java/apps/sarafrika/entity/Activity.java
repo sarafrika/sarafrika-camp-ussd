@@ -12,11 +12,6 @@ public class Activity extends BaseEntity {
     @Column(name = "name")
     public String name;
 
-    @Column(name = "description")
-    public String description;
-
-    @Column(name = "category")
-    public String category;
 
     @Column(name = "camp_uuid")
     public UUID campUuid;
@@ -32,15 +27,6 @@ public class Activity extends BaseEntity {
         return find("campUuid = ?1 and isDeleted = false and isAvailable = true", campUuid);
     }
 
-    public static PanacheQuery<Activity> findByCategory(String category) {
-        return find("category = ?1 and isDeleted = false and isAvailable = true", category);
-    }
-
-    public static List<String> findDistinctCategories() {
-        return getEntityManager()
-                .createQuery("SELECT DISTINCT a.category FROM Activity a WHERE a.isDeleted = false", String.class)
-                .getResultList();
-    }
 
     public static Activity findByUuid(UUID uuid) {
         return find("uuid = ?1 and isDeleted = false", uuid).firstResult();
