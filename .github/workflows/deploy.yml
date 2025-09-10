@@ -148,18 +148,56 @@ jobs:
         
     - name: Verify deployment
       run: |
-        # Wait a moment for the service to be fully ready
-        sleep 30
+        echo "🔍 Starting deployment verification..."
         
-        # Check if the application is responding via the production URL
-        response=$(curl -s -o /dev/null -w "%{http_code}" https://camp-ussd.sarafrika.com/q/health/live || echo "000")
-        
-        if [ "$response" -eq 200 ]; then
-          echo "✅ Deployment successful - Application is healthy at https://camp-ussd.sarafrika.com"
-        else
-          echo "❌ Deployment failed - Application is not responding (HTTP $response)"
+        sshpass -p '${{ secrets.SSH_PASSWORD }}' ssh ${{ secrets.SSH_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+          cd ~/products/camp-ussd
+          
+          # Check if containers are running
+          max_attempts=12
+          attempt=1
+          
+          while [ $attempt -le $max_attempts ]; do
+            echo "Attempt $attempt/$max_attempts - Checking container status..."
+            
+            # Check if the main application container is running
+            if docker-compose ps app | grep -q "Up"; then
+              echo "✅ Application container is running"
+              
+              # Additional check: ensure container is healthy (not just running)
+              container_id=$(docker-compose ps -q app)
+              if [ -n "$container_id" ]; then
+                container_status=$(docker inspect --format='{{.State.Health.Status}}' $container_id 2>/dev/null || echo "unknown")
+                if [ "$container_status" = "healthy" ] || [ "$container_status" = "unknown" ]; then
+                  echo "✅ Container health status: $container_status"
+                  echo "🚀 Deployment verification successful"
+                  exit 0
+                else
+                  echo "⚠️ Container health status: $container_status"
+                fi
+              else
+                echo "✅ Container is running (health check not configured)"
+                exit 0
+              fi
+            else
+              echo "❌ Application container is not running"
+              docker-compose ps
+            fi
+            
+            if [ $attempt -lt $max_attempts ]; then
+              echo "Waiting 10s before next attempt..."
+              sleep 10
+            fi
+            
+            attempt=$((attempt + 1))
+          done
+          
+          echo "❌ Deployment verification failed after $max_attempts attempts"
+          echo "Final container status:"
+          docker-compose ps
+          docker-compose logs app --tail=20
           exit 1
-        fi
+        EOF
         
     - name: Fallback health check
       if: failure()

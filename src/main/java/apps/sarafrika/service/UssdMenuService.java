@@ -110,13 +110,14 @@ public class UssdMenuService {
     }
 
     private String showMainMenu() {
-        return """
-                CON Welcome to Camp Sarafrika!
-                
-                1. Register for a Camp
-                2. My Bookings
-                3. Help
-                4. Exit""";
+        return UssdResponseBuilder.create()
+            .addLine("Welcome to Camp Sarafrika!")
+            .addEmptyLine()
+            .addMenuItem(1, "Register for a Camp", null)
+            .addMenuItem(2, "My Bookings", null)
+            .addMenuItem(3, "Help", null)
+            .addMenuItem(4, "Exit", null)
+            .build();
     }
 
     private String handleMainMenuInput(UserSession session, String input) {
@@ -142,14 +143,30 @@ public class UssdMenuService {
     private String showCampSelection() {
         List<String> campNames = campService.getDistinctCampNames();
         
-        StringBuilder response = new StringBuilder("CON Select a camp:\n\n");
+        UssdResponseBuilder builder = UssdResponseBuilder.create()
+            .addLine("Select a camp:")
+            .addEmptyLine();
         
+        int itemsAdded = 0;
         for (int i = 0; i < campNames.size(); i++) {
-            response.append(String.format("%d. %s\n", i + 1, campNames.get(i)));
+            String campName = campNames.get(i);
+            // Truncate long camp names to fit USSD limits
+            String displayName = campName.length() > 25 ? 
+                campName.substring(0, 22) + "..." : campName;
+            
+            if (!builder.wouldExceedLimit(String.format("%d. %s", i + 1, displayName))) {
+                builder.addMenuItem(i + 1, displayName, null);
+                itemsAdded++;
+            } else {
+                // If we can't fit more items, add pagination
+                if (itemsAdded < campNames.size()) {
+                    builder.addMoreOption();
+                }
+                break;
+            }
         }
         
-        response.append("\n0. Back");
-        return response.toString();
+        return builder.addBackOption().build();
     }
 
     private String showCategorySelection() {
@@ -288,19 +305,41 @@ public class UssdMenuService {
             return showActivitySelection(session, camp.uuid);
         }
         
-        StringBuilder response = new StringBuilder("CON Select Location:\n\n");
+        UssdResponseBuilder builder = UssdResponseBuilder.create()
+            .addLine("Select Location:")
+            .addEmptyLine();
         
         for (int i = 0; i < camp.locations.size(); i++) {
             var location = camp.locations.get(i);
-            response.append(String.format("%d. %s - KSH %.0f\n", 
-                i + 1, location.name, location.fee));
-            if (location.dates != null && !location.dates.isEmpty()) {
-                response.append(String.format("   Dates: %s\n", location.dates));
+            String locationDetail = String.format("KSH %.0f", location.fee);
+            
+            // Check if we can fit the location with dates
+            String locationLine = String.format("%d. %s - %s", i + 1, location.name, locationDetail);
+            
+            if (builder.wouldExceedLimit(locationLine)) {
+                // If basic info doesn't fit, truncate location name
+                String shortName = location.name.length() > 15 ? 
+                    location.name.substring(0, 12) + "..." : location.name;
+                builder.addMenuItem(i + 1, shortName, locationDetail);
+            } else {
+                builder.addLine(locationLine);
+                
+                // Add dates if they exist and we have space
+                if (location.dates != null && !location.dates.isEmpty()) {
+                    String dateInfo = "Dates: " + location.dates;
+                    // Truncate long dates to fit USSD limits
+                    if (dateInfo.length() > 30) {
+                        dateInfo = dateInfo.substring(0, 27) + "...";
+                    }
+                    
+                    if (!builder.wouldExceedLimit("   " + dateInfo)) {
+                        builder.addLine("   " + dateInfo);
+                    }
+                }
             }
         }
         
-        response.append("\n0. Back");
-        return response.toString();
+        return builder.addBackOption().build();
     }
 
     private String handleFullNameInput(UserSession session, String input) {
