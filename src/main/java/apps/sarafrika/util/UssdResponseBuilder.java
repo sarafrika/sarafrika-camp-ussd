@@ -32,13 +32,10 @@ public class UssdResponseBuilder {
     }
     
     public UssdResponseBuilder addLine(String line) {
-        // Truncate long lines to prevent display issues
-        String truncated = truncateText(line, MAX_LINE_LENGTH);
-        
         if (content.length() > 0) {
             content.append("\n");
         }
-        content.append(truncated);
+        content.append(line);
         return this;
     }
     
@@ -48,8 +45,7 @@ public class UssdResponseBuilder {
             // Calculate remaining space for detail
             int remainingSpace = MAX_LINE_LENGTH - menuItem.length() - 3; // 3 for " - "
             if (remainingSpace > 10) { // Only add detail if we have reasonable space
-                String truncatedDetail = truncateText(detail, remainingSpace);
-                menuItem += " - " + truncatedDetail;
+                menuItem += " - " + detail;
             }
         }
         return addLine(menuItem);
@@ -69,13 +65,6 @@ public class UssdResponseBuilder {
     
     public String build() {
         String fullResponse = prefix + content.toString();
-        
-        // Check if response exceeds USSD limits
-        if (fullResponse.length() > SAFE_USSD_LENGTH) {
-            // Truncate gracefully - try to keep complete lines
-            return truncateToSafeLength(fullResponse);
-        }
-        
         return fullResponse;
     }
     
@@ -89,49 +78,9 @@ public class UssdResponseBuilder {
         return SAFE_USSD_LENGTH - currentResponse.length();
     }
     
-    private static String truncateText(String text, int maxLength) {
-        if (text == null || text.length() <= maxLength) {
-            return text;
-        }
-        
-        // Try to truncate at word boundary
-        String truncated = text.substring(0, maxLength - 3); // Reserve space for "..."
-        int lastSpace = truncated.lastIndexOf(' ');
-        
-        if (lastSpace > maxLength / 2) { // Only use word boundary if it's not too early
-            return text.substring(0, lastSpace) + "...";
-        } else {
-            return text.substring(0, maxLength - 3) + "...";
-        }
-    }
+
     
-    private String truncateToSafeLength(String response) {
-        if (response.length() <= SAFE_USSD_LENGTH) {
-            return response;
-        }
-        
-        // Find the last complete line that fits
-        String[] lines = response.split("\n");
-        StringBuilder result = new StringBuilder();
-        
-        for (String line : lines) {
-            String testResult = result.length() == 0 ? 
-                prefix + line : 
-                result.toString() + "\n" + line;
-                
-            if (testResult.length() <= SAFE_USSD_LENGTH - 10) { // Reserve space for "More>>"
-                if (result.length() == 0) {
-                    result.append(prefix).append(line);
-                } else {
-                    result.append("\n").append(line);
-                }
-            } else {
-                break;
-            }
-        }
-        
-        return result.toString();
-    }
+
     
     // Utility method to split long responses into multiple pages
     public static List<String> splitIntoPages(String content, String title) {
