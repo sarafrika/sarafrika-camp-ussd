@@ -39,15 +39,9 @@ public class TrackingService {
         CompletableFuture.runAsync(() -> {
             try {
                 UserInteraction interaction = new UserInteraction(sessionId, phoneNumber, type);
-                interaction.currentState = currentState;
-                interaction.previousState = previousState;
+                interaction.currentState = currentState; // Maps to menu_level column
                 interaction.userInput = userInput;
-                interaction.responseGenerated = response;
-                interaction.processingTimeMs = processingTimeMs;
-                interaction.errorMessage = errorMessage;
-                if (metadata != null) {
-                    interaction.metadata.putAll(metadata);
-                }
+                interaction.responseGenerated = response; // Maps to response_sent column
                 
                 eventQueue.offer(interaction);
             } catch (Exception e) {

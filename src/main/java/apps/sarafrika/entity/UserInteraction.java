@@ -18,30 +18,17 @@ public class UserInteraction extends BaseEntity {
     @Column(name = "phone_number")
     public String phoneNumber;
 
-    @Column(name = "interaction_type")
+    @Column(name = "action")
     public InteractionType interactionType;
 
-    @Column(name = "current_state")
+    @Column(name = "menu_level")
     public String currentState;
-
-    @Column(name = "previous_state")
-    public String previousState;
 
     @Column(name = "user_input")
     public String userInput;
 
-    @Column(name = "response_generated")
+    @Column(name = "response_sent")
     public String responseGenerated;
-
-    @Column(name = "processing_time_ms")
-    public Integer processingTimeMs;
-
-    @Column(name = "error_message")
-    public String errorMessage;
-
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "metadata")
-    public Map<String, Object> metadata = new HashMap<>();
 
     public UserInteraction() {}
 
