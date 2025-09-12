@@ -282,12 +282,21 @@ public class UssdMenuService {
                 return "END Camp not found.";
             }
             
-            int selection = Integer.parseInt(input) - 1;
+            int selection = Integer.parseInt(input);
             
-            if (selection >= 0 && selection < camp.locations.size()) {
-                var selectedLocation = camp.locations.get(selection);
+            // Handle pagination
+            if (selection == 99) {
+                session.incrementPagination(PAGE_SIZE);
+                return showLocationSelection(session, camp);
+            }
+            
+            // Handle location selection (1-based input, convert to 0-based index)
+            if (selection >= 1 && selection <= session.currentMenuItems.size()) {
+                int actualIndex = Integer.parseInt(session.currentMenuItems.get(selection - 1));
+                var selectedLocation = camp.locations.get(actualIndex);
                 session.putData("selectedLocationId", selectedLocation.uuid);
                 session.pushState("select_activity");
+                session.resetPagination(); // Reset pagination for next screen
                 return showActivitySelection(session, UUID.fromString(campUuid));
             } else {
                 return "CON Invalid selection. Please try again.\n\n" + showLocationSelection(session, camp);
@@ -305,38 +314,53 @@ public class UssdMenuService {
             return showActivitySelection(session, camp.uuid);
         }
         
+        // Use pagination similar to activity selection
+        int offset = session.paginationOffset;
+        int totalLocations = camp.locations.size();
+        int endIndex = Math.min(offset + PAGE_SIZE, totalLocations);
+        
         UssdResponseBuilder builder = UssdResponseBuilder.create()
             .addLine("Select Location:")
             .addEmptyLine();
         
-        for (int i = 0; i < camp.locations.size(); i++) {
+        session.currentMenuItems.clear();
+        
+        for (int i = offset; i < endIndex; i++) {
             var location = camp.locations.get(i);
+            int displayNumber = i - offset + 1; // 1, 2, 3...
+            
             String locationDetail = String.format("KSH %.0f", location.fee);
+            String locationLine = String.format("%d. %s - %s", displayNumber, location.name, locationDetail);
             
-            // Check if we can fit the location with dates
-            String locationLine = String.format("%d. %s - %s", i + 1, location.name, locationDetail);
-            
-            if (builder.wouldExceedLimit(locationLine)) {
-                // If basic info doesn't fit, truncate location name
-                String shortName = location.name.length() > 15 ? 
-                    location.name.substring(0, 12) + "..." : location.name;
-                builder.addMenuItem(i + 1, shortName, locationDetail);
-            } else {
+            // Try to fit the basic location info
+            if (!builder.wouldExceedLimit(locationLine)) {
                 builder.addLine(locationLine);
+                session.currentMenuItems.add(String.valueOf(i)); // Store actual index
                 
-                // Add dates if they exist and we have space
+                // Try to add dates if they exist and we have space
                 if (location.dates != null && !location.dates.isEmpty()) {
-                    String dateInfo = "Dates: " + location.dates;
+                    String dateInfo = "   Dates: " + location.dates;
                     // Truncate long dates to fit USSD limits
-                    if (dateInfo.length() > 30) {
-                        dateInfo = dateInfo.substring(0, 27) + "...";
+                    if (dateInfo.length() > 35) {
+                        dateInfo = dateInfo.substring(0, 32) + "...";
                     }
                     
-                    if (!builder.wouldExceedLimit("   " + dateInfo)) {
-                        builder.addLine("   " + dateInfo);
+                    if (!builder.wouldExceedLimit(dateInfo)) {
+                        builder.addLine(dateInfo);
                     }
                 }
+            } else {
+                // If basic info doesn't fit, prioritize showing the option over dates
+                String shortName = location.name.length() > 12 ? 
+                    location.name.substring(0, 9) + "..." : location.name;
+                builder.addMenuItem(displayNumber, shortName, locationDetail);
+                session.currentMenuItems.add(String.valueOf(i));
             }
+        }
+        
+        // Add pagination if there are more locations
+        if (endIndex < totalLocations) {
+            builder.addMoreOption();
         }
         
         return builder.addBackOption().build();
@@ -640,6 +664,11 @@ public class UssdMenuService {
             case "select_camp" -> {
                 String category = session.getStringData("selectedCategory");
                 yield showCampSelection(session, category, session.paginationOffset);
+            }
+            case "select_location" -> {
+                String campUuid = session.getStringData("selectedCampUuid");
+                Camp camp = campService.findByUuid(UUID.fromString(campUuid));
+                yield showLocationSelection(session, camp);
             }
             case "select_activity" -> {
                 UUID campUuid = UUID.fromString(session.getStringData("selectedCampUuid"));
