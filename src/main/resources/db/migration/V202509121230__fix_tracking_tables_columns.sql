@@ -11,8 +11,7 @@ ALTER TABLE navigation_events
 -- Migrate data from old columns to new columns
 UPDATE navigation_events 
 SET from_state = from_menu, 
-    to_state = to_menu,
-    user_input = navigation_input;
+    to_state = to_menu;
 
 -- Drop indexes on old columns before dropping the columns
 DROP INDEX IF EXISTS idx_navigation_events_timestamp;
