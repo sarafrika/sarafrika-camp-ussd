@@ -5,9 +5,9 @@ import java.util.List;
 
 public class UssdResponseBuilder {
     
-    // USSD character limits - conservative approach
-    private static final int MAX_USSD_LENGTH = 160;
-    private static final int SAFE_USSD_LENGTH = 150; // Leave buffer for network variations
+    // USSD character limits - standard USSD supports up to 182 characters
+    private static final int MAX_USSD_LENGTH = 182;
+    private static final int SAFE_USSD_LENGTH = 175; // Leave buffer for network variations
     private static final int MAX_LINE_LENGTH = 35; // Reasonable line length for mobile screens
     
     private StringBuilder content;

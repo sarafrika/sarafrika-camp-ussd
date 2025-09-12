@@ -331,17 +331,13 @@ public class UssdMenuService {
             
             String locationDetail = String.format("KSH %.0f", location.fee);
             
-            // Use addMenuItem for consistent formatting and automatic truncation handling
+            // Use addMenuItem for consistent formatting - let it handle truncation
             builder.addMenuItem(displayNumber, location.name, locationDetail);
             session.currentMenuItems.add(String.valueOf(i)); // Store actual index
             
             // Add dates as a separate line if they exist and we have space
             if (location.dates != null && !location.dates.isEmpty()) {
                 String dateInfo = "   " + location.dates;
-                // Truncate long dates to fit USSD limits
-                if (dateInfo.length() > 35) {
-                    dateInfo = dateInfo.substring(0, 32) + "...";
-                }
                 
                 if (!builder.wouldExceedLimit(dateInfo)) {
                     builder.addLine(dateInfo);
