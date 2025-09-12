@@ -606,7 +606,7 @@ public class UssdMenuService {
         return """
                 CON How to Register:
                 
-                Dial *123# → 1. Register for a Camp → Select Category → Choose Camp Type → Select Camp → Enter Details → Pay → Done!
+                Dial *789*2020# → 1. Register for a Camp → Select Category → Choose Camp Type → Select Camp → Enter Details → Pay → Done!
                 
                 0. Back""";
     }

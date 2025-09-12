@@ -46,7 +46,7 @@ africas-talking:
   environment: ${AFRICAS_TALKING_ENVIRONMENT:sandbox}
   
 ussd:
-  service-code: ${USSD_SERVICE_CODE:*123#}
+  service-code: ${USSD_SERVICE_CODE:*789*2020#}
   session-timeout: 300 # 5 minutes in seconds
 
 logging:

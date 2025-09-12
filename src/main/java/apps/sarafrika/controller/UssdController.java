@@ -96,7 +96,7 @@ public class UssdController {
             @Parameter(
                 description = "USSD service code that was dialed",
                 required = true,
-                example = "*123#"
+                example = "*789*2020#"
             )
             @FormParam("serviceCode") String serviceCode,
             
