@@ -299,12 +299,12 @@ public class UssdMenuService {
                 session.resetPagination(); // Reset pagination for next screen
                 return showActivitySelection(session, UUID.fromString(campUuid));
             } else {
-                return "CON Invalid selection. Please try again.\n\n" + showLocationSelection(session, camp);
+                return showInvalidSelectionLocation(session, camp);
             }
         } catch (NumberFormatException e) {
             String campUuid = session.getStringData("selectedCampUuid");
             Camp camp = campService.findByUuid(UUID.fromString(campUuid));
-            return "CON Invalid input. Please enter a number.\n\n" + showLocationSelection(session, camp);
+            return showInvalidInputLocation(session, camp);
         }
     }
 
@@ -330,31 +330,22 @@ public class UssdMenuService {
             int displayNumber = i - offset + 1; // 1, 2, 3...
             
             String locationDetail = String.format("KSH %.0f", location.fee);
-            String locationLine = String.format("%d. %s - %s", displayNumber, location.name, locationDetail);
             
-            // Try to fit the basic location info
-            if (!builder.wouldExceedLimit(locationLine)) {
-                builder.addLine(locationLine);
-                session.currentMenuItems.add(String.valueOf(i)); // Store actual index
-                
-                // Try to add dates if they exist and we have space
-                if (location.dates != null && !location.dates.isEmpty()) {
-                    String dateInfo = "   Dates: " + location.dates;
-                    // Truncate long dates to fit USSD limits
-                    if (dateInfo.length() > 35) {
-                        dateInfo = dateInfo.substring(0, 32) + "...";
-                    }
-                    
-                    if (!builder.wouldExceedLimit(dateInfo)) {
-                        builder.addLine(dateInfo);
-                    }
+            // Use addMenuItem for consistent formatting and automatic truncation handling
+            builder.addMenuItem(displayNumber, location.name, locationDetail);
+            session.currentMenuItems.add(String.valueOf(i)); // Store actual index
+            
+            // Add dates as a separate line if they exist and we have space
+            if (location.dates != null && !location.dates.isEmpty()) {
+                String dateInfo = "   " + location.dates;
+                // Truncate long dates to fit USSD limits
+                if (dateInfo.length() > 35) {
+                    dateInfo = dateInfo.substring(0, 32) + "...";
                 }
-            } else {
-                // If basic info doesn't fit, prioritize showing the option over dates
-                String shortName = location.name.length() > 12 ? 
-                    location.name.substring(0, 9) + "..." : location.name;
-                builder.addMenuItem(displayNumber, shortName, locationDetail);
-                session.currentMenuItems.add(String.valueOf(i));
+                
+                if (!builder.wouldExceedLimit(dateInfo)) {
+                    builder.addLine(dateInfo);
+                }
             }
         }
         
@@ -741,22 +732,30 @@ public class UssdMenuService {
             return "CON Enter participant's full name:\n\n0. Back";
         }
         
-        StringBuilder response = new StringBuilder("CON Select Activity:\n\n");
+        // Use pagination offset similar to location selection
+        int offset = session.paginationOffset;
+        int totalActivities = activities.size();
+        int endIndex = Math.min(offset + PAGE_SIZE, totalActivities);
+        
+        UssdResponseBuilder builder = UssdResponseBuilder.create()
+            .addLine("Select Activity:")
+            .addEmptyLine();
+        
         session.currentMenuItems.clear();
         
-        int displayCount = Math.min(activities.size(), PAGE_SIZE);
-        for (int i = 0; i < displayCount; i++) {
+        for (int i = offset; i < endIndex; i++) {
             Activity activity = activities.get(i);
-            response.append(String.format("%d. %s\n", i + 1, activity.name));
+            int displayNumber = i - offset + 1; // 1, 2, 3...
+            builder.addMenuItem(displayNumber, activity.name, null);
             session.currentMenuItems.add(activity.uuid.toString());
         }
         
-        if (activities.size() > PAGE_SIZE) {
-            response.append("\n99. More >>\n");
+        // Add pagination if there are more activities
+        if (endIndex < totalActivities) {
+            builder.addMoreOption();
         }
         
-        response.append("\n0. Back");
-        return response.toString();
+        return builder.addBackOption().build();
     }
 
     private String handleActivitySelection(UserSession session, String input) {
@@ -775,13 +774,11 @@ public class UssdMenuService {
                 session.pushState("enter_full_name");
                 return "CON Enter participant's full name:\n\n0. Back";
             } else {
-                return "CON Invalid selection. Please try again.\n\n" + 
-                       showActivitySelection(session, campUuid);
+                return showInvalidSelectionActivity(session, campUuid);
             }
         } catch (NumberFormatException e) {
             UUID campUuid = UUID.fromString(session.getStringData("selectedCampUuid"));
-            return "CON Invalid input. Please enter a number.\n\n" + 
-                   showActivitySelection(session, campUuid);
+            return showInvalidInputActivity(session, campUuid);
         }
     }
 
@@ -843,5 +840,99 @@ public class UssdMenuService {
                 yield formatted.toString();
             }
         };
+    }
+    
+    private String showInvalidSelectionLocation(UserSession session, Camp camp) {
+        UssdResponseBuilder builder = UssdResponseBuilder.create()
+            .addLine("Invalid selection. Please try again.")
+            .addEmptyLine();
+        
+        // Add current location options
+        int offset = session.paginationOffset;
+        int totalLocations = camp.locations.size();
+        int endIndex = Math.min(offset + PAGE_SIZE, totalLocations);
+        
+        for (int i = offset; i < endIndex; i++) {
+            var location = camp.locations.get(i);
+            int displayNumber = i - offset + 1;
+            String locationDetail = String.format("KSH %.0f", location.fee);
+            builder.addMenuItem(displayNumber, location.name, locationDetail);
+        }
+        
+        if (endIndex < totalLocations) {
+            builder.addMoreOption();
+        }
+        
+        return builder.addBackOption().build();
+    }
+    
+    private String showInvalidInputLocation(UserSession session, Camp camp) {
+        UssdResponseBuilder builder = UssdResponseBuilder.create()
+            .addLine("Invalid input. Please enter a number.")
+            .addEmptyLine();
+        
+        // Add current location options
+        int offset = session.paginationOffset;
+        int totalLocations = camp.locations.size();
+        int endIndex = Math.min(offset + PAGE_SIZE, totalLocations);
+        
+        for (int i = offset; i < endIndex; i++) {
+            var location = camp.locations.get(i);
+            int displayNumber = i - offset + 1;
+            String locationDetail = String.format("KSH %.0f", location.fee);
+            builder.addMenuItem(displayNumber, location.name, locationDetail);
+        }
+        
+        if (endIndex < totalLocations) {
+            builder.addMoreOption();
+        }
+        
+        return builder.addBackOption().build();
+    }
+    
+    private String showInvalidSelectionActivity(UserSession session, UUID campUuid) {
+        List<Activity> activities = Activity.findByCampUuid(campUuid).list();
+        int offset = session.paginationOffset;
+        int totalActivities = activities.size();
+        int endIndex = Math.min(offset + PAGE_SIZE, totalActivities);
+        
+        UssdResponseBuilder builder = UssdResponseBuilder.create()
+            .addLine("Invalid selection. Please try again.")
+            .addEmptyLine();
+        
+        for (int i = offset; i < endIndex; i++) {
+            Activity activity = activities.get(i);
+            int displayNumber = i - offset + 1;
+            builder.addMenuItem(displayNumber, activity.name, null);
+        }
+        
+        if (endIndex < totalActivities) {
+            builder.addMoreOption();
+        }
+        
+        return builder.addBackOption().build();
+    }
+    
+    private String showInvalidInputActivity(UserSession session, UUID campUuid) {
+        List<Activity> activities = Activity.findByCampUuid(campUuid).list();
+        int offset = session.paginationOffset;
+        int totalActivities = activities.size();
+        int endIndex = Math.min(offset + PAGE_SIZE, totalActivities);
+        
+        UssdResponseBuilder builder = UssdResponseBuilder.create()
+            .addLine("Invalid input. Please enter a number.")
+            .addEmptyLine();
+        
+        for (int i = offset; i < endIndex; i++) {
+            Activity activity = activities.get(i);
+            int displayNumber = i - offset + 1;
+            builder.addMenuItem(displayNumber, activity.name, null);
+        }
+        
+        if (endIndex < totalActivities) {
+            builder.addMoreOption();
+        }
+        
+        return builder.addBackOption().build();
     }
 }
