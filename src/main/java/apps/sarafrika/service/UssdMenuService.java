@@ -136,7 +136,7 @@ public class UssdMenuService {
                 yield showHelp(session);
             }
             case "4" -> "END Thank you for using Camp Sarafrika services!";
-            default -> "CON Invalid option. Please try again.\n\n" + showMainMenu();
+            default -> showInvalidOptionMainMenu();
         };
     }
 
@@ -172,14 +172,15 @@ public class UssdMenuService {
     private String showCategorySelection() {
         List<String> categories = campService.getDistinctCategories();
         
-        StringBuilder response = new StringBuilder("CON Select a category:\n\n");
+        UssdResponseBuilder builder = UssdResponseBuilder.create()
+            .addLine("Select a category:")
+            .addEmptyLine();
         
         for (int i = 0; i < categories.size(); i++) {
-            response.append(String.format("%d. %s\n", i + 1, categories.get(i)));
+            builder.addMenuItem(i + 1, categories.get(i), null);
         }
         
-        response.append("\n0. Back");
-        return response.toString();
+        return builder.addBackOption().build();
     }
 
     private String handleCategorySelection(UserSession session, String input) {
@@ -193,10 +194,10 @@ public class UssdMenuService {
                 session.pushState("select_camp_type");
                 return showCampTypeSelection();
             } else {
-                return "CON Invalid selection. Please try again.\n\n" + showCategorySelection();
+                return showInvalidSelectionCategory();
             }
         } catch (NumberFormatException e) {
-            return "CON Invalid input. Please enter a number.\n\n" + showCategorySelection();
+            return showInvalidInputCategory();
         }
     }
 
@@ -267,9 +268,9 @@ public class UssdMenuService {
                     return showLocationSelection(session, camp);
                 }
             }
-            return "CON Invalid selection. Please try again.\n\n" + showCampSelection();
+            return showInvalidSelectionCamp();
         } catch (NumberFormatException e) {
-            return "CON Invalid input. Please enter a number.\n\n" + showCampSelection();
+            return showInvalidInputCamp();
         }
     }
 
@@ -329,20 +330,21 @@ public class UssdMenuService {
             var location = camp.locations.get(i);
             int displayNumber = i - offset + 1; // 1, 2, 3...
             
-            String locationDetail = String.format("KSH %.0f", location.fee);
+            // Create a more compact single-line format
+            String locationDetail;
+            if (location.dates != null && !location.dates.isEmpty() && location.fee != null) {
+                // Try compact format: "LocationName (Dates) - KSH Fee"
+                String shortDate = truncateDates(location.dates);
+                locationDetail = String.format("(%s) KSH %.0f", shortDate, location.fee);
+            } else if (location.fee != null) {
+                locationDetail = String.format("KSH %.0f", location.fee);
+            } else {
+                locationDetail = "";
+            }
             
-            // Use addMenuItem for consistent formatting - let it handle truncation
+            // Use addMenuItem which will handle truncation intelligently
             builder.addMenuItem(displayNumber, location.name, locationDetail);
             session.currentMenuItems.add(String.valueOf(i)); // Store actual index
-            
-            // Add dates as a separate line if they exist and we have space
-            if (location.dates != null && !location.dates.isEmpty()) {
-                String dateInfo = "   " + location.dates;
-                
-                if (!builder.wouldExceedLimit(dateInfo)) {
-                    builder.addLine(dateInfo);
-                }
-            }
         }
         
         // Add pagination if there are more locations
@@ -355,45 +357,81 @@ public class UssdMenuService {
 
     private String handleFullNameInput(UserSession session, String input) {
         if (input.length() < 2) {
-            return "CON Name must be at least 2 characters long. Please try again:\n\n0. Back";
+            return UssdResponseBuilder.create()
+                .addLine("Name must be at least 2 characters long.")
+                .addLine("Please try again:")
+                .addEmptyLine()
+                .addBackOption()
+                .build();
         }
         
         session.putData("participantName", input);
         session.pushState("enter_age");
-        return "CON Enter participant's age:\n\n0. Back";
+        return UssdResponseBuilder.create()
+            .addLine("Enter participant's age:")
+            .addEmptyLine()
+            .addBackOption()
+            .build();
     }
 
     private String handleAgeInput(UserSession session, String input) {
         try {
             int age = Integer.parseInt(input);
             if (age < 5 || age > 18) {
-                return "CON Age must be between 5 and 18 years. Please try again:\n\n0. Back";
+                return UssdResponseBuilder.create()
+                    .addLine("Age must be between 5 and 18 years.")
+                    .addLine("Please try again:")
+                    .addEmptyLine()
+                    .addBackOption()
+                    .build();
             }
             
             session.putData("participantAge", age);
             
             // All participants are minors (5-18), so always ask for guardian details
             session.pushState("enter_guardian_phone");
-            return "CON Enter guardian's phone number:\n\n0. Back";
+            return UssdResponseBuilder.create()
+            .addLine("Enter guardian's phone number:")
+            .addEmptyLine()
+            .addBackOption()
+            .build();
             
         } catch (NumberFormatException e) {
-            return "CON Invalid age. Please enter a valid number:\n\n0. Back";
+            return UssdResponseBuilder.create()
+                .addLine("Invalid age. Please enter a valid number:")
+                .addEmptyLine()
+                .addBackOption()
+                .build();
         }
     }
 
     private String handleGuardianPhoneInput(UserSession session, String input) {
         if (!isValidPhoneNumber(input)) {
-            return "CON Invalid phone number format. Please enter a valid Kenyan phone number:\n\n0. Back";
+            return UssdResponseBuilder.create()
+                .addLine("Invalid phone number format.")
+                .addLine("Please enter a valid Kenyan phone number:")
+                .addEmptyLine()
+                .addBackOption()
+                .build();
         }
         
         session.putData("guardianPhone", input);
         session.pushState("enter_participant_phone");
-        return "CON Enter participant's phone number:\n\n0. Back";
+        return UssdResponseBuilder.create()
+            .addLine("Enter participant's phone number:")
+            .addEmptyLine()
+            .addBackOption()
+            .build();
     }
 
     private String handleParticipantPhoneInput(UserSession session, String input) {
         if (!isValidPhoneNumber(input)) {
-            return "CON Invalid phone number format. Please enter a valid Kenyan phone number:\n\n0. Back";
+            return UssdResponseBuilder.create()
+                .addLine("Invalid phone number format.")
+                .addLine("Please enter a valid Kenyan phone number:")
+                .addEmptyLine()
+                .addBackOption()
+                .build();
         }
         
         session.putData("participantPhone", input);
@@ -427,25 +465,27 @@ public class UssdMenuService {
             }
         }
         
-        StringBuilder response = new StringBuilder("CON Registration Summary:\n\n");
-        response.append(String.format("Camp: %s\n", camp.name));
-        response.append(String.format("Location: %s\n", locationName));
-        response.append(String.format("Dates: %s\n", dates));
-        response.append(String.format("Participant: %s\n", session.getStringData("participantName")));
-        response.append(String.format("Age: %s\n", session.getStringData("participantAge")));
-        response.append(String.format("Fee: KSH %s\n\n", fee));
-        response.append("1. Confirm & Pay\n");
-        response.append("2. Cancel\n\n");
-        response.append("0. Back");
-        
-        return response.toString();
+        return UssdResponseBuilder.create()
+            .addLine("Registration Summary:")
+            .addEmptyLine()
+            .addLine(String.format("Camp: %s", camp.name))
+            .addLine(String.format("Location: %s", locationName))
+            .addLine(String.format("Dates: %s", dates))
+            .addLine(String.format("Participant: %s", session.getStringData("participantName")))
+            .addLine(String.format("Age: %s", session.getStringData("participantAge")))
+            .addLine(String.format("Fee: KSH %s", fee))
+            .addEmptyLine()
+            .addMenuItem(1, "Confirm & Pay", null)
+            .addMenuItem(2, "Cancel", null)
+            .addBackOption()
+            .build();
     }
 
     private String handleRegistrationConfirmation(UserSession session, String input) {
         return switch (input) {
             case "1" -> processRegistration(session);
             case "2" -> "END Registration cancelled.";
-            default -> "CON Invalid option. Please select 1 or 2.\n\n" + showRegistrationConfirmation(session);
+            default -> showInvalidOptionRegistrationConfirmation(session);
         };
     }
 
@@ -509,7 +549,9 @@ public class UssdMenuService {
             return "END No bookings found for this number.";
         }
         
-        StringBuilder response = new StringBuilder("CON Your Bookings:\n\n");
+        UssdResponseBuilder builder = UssdResponseBuilder.create()
+            .addLine("Your Bookings:")
+            .addEmptyLine();
         
         for (int i = 0; i < Math.min(registrations.size(), 3); i++) {
             Registration reg = registrations.get(i);
@@ -532,12 +574,11 @@ public class UssdMenuService {
                 referenceCode = order.referenceCode;
             }
             
-            response.append(String.format("%d. %s - %s\n   Ref: %s\n", 
-                i + 1, reg.camp.name, status, referenceCode));
+            builder.addMenuItem(i + 1, reg.camp.name, status)
+                   .addLine(String.format("   Ref: %s", referenceCode));
         }
         
-        response.append("\n0. Back");
-        return response.toString();
+        return builder.addBackOption().build();
     }
 
     private String handleMyBookingsInput(UserSession session, String input) {
@@ -546,14 +587,14 @@ public class UssdMenuService {
 
     private String showHelp(UserSession session) {
         session.pushState("help_menu");
-        return """
-                CON Help Menu:
-                
-                1. How to Register
-                2. Payment Info
-                3. Contact Support
-                
-                0. Back""";
+        return UssdResponseBuilder.create()
+            .addLine("Help Menu:")
+            .addEmptyLine()
+            .addMenuItem(1, "How to Register", null)
+            .addMenuItem(2, "Payment Info", null)
+            .addMenuItem(3, "Contact Support", null)
+            .addBackOption()
+            .build();
     }
 
     private String handleHelpInput(UserSession session, String input) {
@@ -574,28 +615,29 @@ public class UssdMenuService {
                 session.pushState("contact_support");
                 yield showContactSupport();
             }
-            default -> "CON Invalid option. Please try again.\n\n" + showHelpMenu();
+            default -> showInvalidOptionHelpMenu();
         };
     }
 
     private String showHelpMenu() {
-        return """
-                CON Help Menu:
-                
-                1. How to Register
-                2. Payment Info
-                3. Contact Support
-                
-                0. Back""";
+        return UssdResponseBuilder.create()
+            .addLine("Help Menu:")
+            .addEmptyLine()
+            .addMenuItem(1, "How to Register", null)
+            .addMenuItem(2, "Payment Info", null)
+            .addMenuItem(3, "Contact Support", null)
+            .addBackOption()
+            .build();
     }
 
     private String showHowToRegister() {
-        return """
-                CON How to Register:
-                
-                Dial *789*2020# → 1. Register for a Camp → Select Category → Choose Camp Type → Select Camp → Enter Details → Pay → Done!
-                
-                0. Back""";
+        return UssdResponseBuilder.create()
+            .addLine("How to Register:")
+            .addEmptyLine()
+            .addLine("Dial *789*2020# → 1. Register for a Camp → Select Category → Choose Camp Type → Select Camp → Enter Details → Pay → Done!")
+            .addEmptyLine()
+            .addBackOption()
+            .build();
     }
 
     private String handleHowToRegisterInput(UserSession session, String input) {
@@ -603,12 +645,13 @@ public class UssdMenuService {
     }
 
     private String showPaymentInfo() {
-        return """
-                CON Payment Info:
-                
-                Payments are made via Mobile Money. After confirming registration, you will receive an STK Push. Enter your PIN to complete.
-                
-                0. Back""";
+        return UssdResponseBuilder.create()
+            .addLine("Payment Info:")
+            .addEmptyLine()
+            .addLine("Payments are made via Mobile Money. After confirming registration, you will receive an STK Push. Enter your PIN to complete.")
+            .addEmptyLine()
+            .addBackOption()
+            .build();
     }
 
     private String handlePaymentInfoInput(UserSession session, String input) {
@@ -616,12 +659,13 @@ public class UssdMenuService {
     }
 
     private String showContactSupport() {
-        return """
-                CON Contact Support:
-                
-                For help, call 0712-345678 or email support.camp@sarafrika.com
-                
-                0. Back""";
+        return UssdResponseBuilder.create()
+            .addLine("Contact Support:")
+            .addEmptyLine()
+            .addLine("For help, call 0712-345678 or email support.camp@sarafrika.com")
+            .addEmptyLine()
+            .addBackOption()
+            .build();
     }
 
     private String handleContactSupportInput(UserSession session, String input) {
@@ -661,10 +705,26 @@ public class UssdMenuService {
                 UUID campUuid = UUID.fromString(session.getStringData("selectedCampUuid"));
                 yield showActivitySelection(session, campUuid);
             }
-            case "enter_full_name" -> "CON Enter participant's full name:\n\n0. Back";
-            case "enter_age" -> "CON Enter participant's age:\n\n0. Back";
-            case "enter_guardian_phone" -> "CON Enter guardian's phone number:\n\n0. Back";
-            case "enter_participant_phone" -> "CON Enter participant's phone number:\n\n0. Back";
+            case "enter_full_name" -> UssdResponseBuilder.create()
+                .addLine("Enter participant's full name:")
+                .addEmptyLine()
+                .addBackOption()
+                .build();
+            case "enter_age" -> UssdResponseBuilder.create()
+                .addLine("Enter participant's age:")
+                .addEmptyLine()
+                .addBackOption()
+                .build();
+            case "enter_guardian_phone" -> UssdResponseBuilder.create()
+                .addLine("Enter guardian's phone number:")
+                .addEmptyLine()
+                .addBackOption()
+                .build();
+            case "enter_participant_phone" -> UssdResponseBuilder.create()
+                .addLine("Enter participant's phone number:")
+                .addEmptyLine()
+                .addBackOption()
+                .build();
             case "confirm_registration" -> showRegistrationConfirmation(session);
             default -> showMainMenu();
         };
@@ -691,13 +751,13 @@ public class UssdMenuService {
     }
 
     private String showCampTypeSelection() {
-        return """
-                CON Camp Type:
-                
-                1. Half Day: 9:00am - 13:00pm
-                2. Boot Camp: Boarding
-                
-                0. Back""";
+        return UssdResponseBuilder.create()
+            .addLine("Camp Type:")
+            .addEmptyLine()
+            .addMenuItem(1, "Half Day: 9:00am - 13:00pm", null)
+            .addMenuItem(2, "Boot Camp: Boarding", null)
+            .addBackOption()
+            .build();
     }
 
     private String handleCampTypeSelection(UserSession session, String input) {
@@ -716,7 +776,7 @@ public class UssdMenuService {
                 String category = session.getStringData("selectedCategory");
                 yield showCampSelection(session, category, 0);
             }
-            default -> "CON Invalid option. Please try again.\n\n" + showCampTypeSelection();
+            default -> showInvalidOptionCampType();
         };
     }
 
@@ -725,7 +785,11 @@ public class UssdMenuService {
         
         if (activities.isEmpty()) {
             session.pushState("enter_full_name");
-            return "CON Enter participant's full name:\n\n0. Back";
+            return UssdResponseBuilder.create()
+                .addLine("Enter participant's full name:")
+                .addEmptyLine()
+                .addBackOption()
+                .build();
         }
         
         // Use pagination offset similar to location selection
@@ -838,6 +902,28 @@ public class UssdMenuService {
         };
     }
     
+    /**
+     * Truncate long date strings to fit better in USSD constraints
+     */
+    private String truncateDates(String dates) {
+        if (dates == null || dates.isEmpty()) return "";
+        
+        // If dates are short enough, return as is
+        if (dates.length() <= 15) return dates;
+        
+        // Try to extract key parts like "17th-29th Nov"
+        if (dates.contains("-") && dates.contains(" ")) {
+            // Pattern like "17th- 29th Nov (9:00am - 13:00pm)"
+            String dateRange = dates.split("\\(")[0].trim(); // Remove time part
+            if (dateRange.length() <= 20) {
+                return dateRange;
+            }
+        }
+        
+        // Fallback: truncate to 12 chars + "..."
+        return dates.substring(0, 12) + "...";
+    }
+    
     private String showInvalidSelectionLocation(UserSession session, Camp camp) {
         UssdResponseBuilder builder = UssdResponseBuilder.create()
             .addLine("Invalid selection. Please try again.")
@@ -930,5 +1016,145 @@ public class UssdMenuService {
         }
         
         return builder.addBackOption().build();
+    }
+    
+    private String showInvalidSelectionCamp() {
+        List<String> campNames = campService.getDistinctCampNames();
+        
+        UssdResponseBuilder builder = UssdResponseBuilder.create()
+            .addLine("Invalid selection. Please try again.")
+            .addEmptyLine()
+            .addLine("Select a camp:")
+            .addEmptyLine();
+        
+        int itemsAdded = 0;
+        for (int i = 0; i < campNames.size(); i++) {
+            String campName = campNames.get(i);
+            String displayName = campName.length() > 25 ? 
+                campName.substring(0, 22) + "..." : campName;
+            
+            if (!builder.wouldExceedLimit(String.format("%d. %s", i + 1, displayName))) {
+                builder.addMenuItem(i + 1, displayName, null);
+                itemsAdded++;
+            } else {
+                if (itemsAdded < campNames.size()) {
+                    builder.addMoreOption();
+                }
+                break;
+            }
+        }
+        
+        return builder.addBackOption().build();
+    }
+    
+    private String showInvalidInputCamp() {
+        List<String> campNames = campService.getDistinctCampNames();
+        
+        UssdResponseBuilder builder = UssdResponseBuilder.create()
+            .addLine("Invalid input. Please enter a number.")
+            .addEmptyLine()
+            .addLine("Select a camp:")
+            .addEmptyLine();
+        
+        int itemsAdded = 0;
+        for (int i = 0; i < campNames.size(); i++) {
+            String campName = campNames.get(i);
+            String displayName = campName.length() > 25 ? 
+                campName.substring(0, 22) + "..." : campName;
+            
+            if (!builder.wouldExceedLimit(String.format("%d. %s", i + 1, displayName))) {
+                builder.addMenuItem(i + 1, displayName, null);
+                itemsAdded++;
+            } else {
+                if (itemsAdded < campNames.size()) {
+                    builder.addMoreOption();
+                }
+                break;
+            }
+        }
+        
+        return builder.addBackOption().build();
+    }
+    
+    private String showInvalidOptionMainMenu() {
+        return UssdResponseBuilder.create()
+            .addLine("Invalid option. Please try again.")
+            .addEmptyLine()
+            .addLine("Welcome to Camp Sarafrika!")
+            .addEmptyLine()
+            .addMenuItem(1, "Register for a Camp", null)
+            .addMenuItem(2, "My Bookings", null)
+            .addMenuItem(3, "Help", null)
+            .addMenuItem(4, "Exit", null)
+            .build();
+    }
+    
+    private String showInvalidSelectionCategory() {
+        List<String> categories = campService.getDistinctCategories();
+        
+        UssdResponseBuilder builder = UssdResponseBuilder.create()
+            .addLine("Invalid selection. Please try again.")
+            .addEmptyLine()
+            .addLine("Select a category:")
+            .addEmptyLine();
+        
+        for (int i = 0; i < categories.size(); i++) {
+            builder.addMenuItem(i + 1, categories.get(i), null);
+        }
+        
+        return builder.addBackOption().build();
+    }
+    
+    private String showInvalidInputCategory() {
+        List<String> categories = campService.getDistinctCategories();
+        
+        UssdResponseBuilder builder = UssdResponseBuilder.create()
+            .addLine("Invalid input. Please enter a number.")
+            .addEmptyLine()
+            .addLine("Select a category:")
+            .addEmptyLine();
+        
+        for (int i = 0; i < categories.size(); i++) {
+            builder.addMenuItem(i + 1, categories.get(i), null);
+        }
+        
+        return builder.addBackOption().build();
+    }
+    
+    private String showInvalidOptionRegistrationConfirmation(UserSession session) {
+        return UssdResponseBuilder.create()
+            .addLine("Invalid option. Please select 1 or 2.")
+            .addEmptyLine()
+            .addLine("Registration Summary:")
+            .addEmptyLine()
+            .addMenuItem(1, "Confirm & Pay", null)
+            .addMenuItem(2, "Cancel", null)
+            .addBackOption()
+            .build();
+    }
+    
+    private String showInvalidOptionHelpMenu() {
+        return UssdResponseBuilder.create()
+            .addLine("Invalid option. Please try again.")
+            .addEmptyLine()
+            .addLine("Help Menu:")
+            .addEmptyLine()
+            .addMenuItem(1, "How to Register", null)
+            .addMenuItem(2, "Payment Info", null)
+            .addMenuItem(3, "Contact Support", null)
+            .addBackOption()
+            .build();
+    }
+    
+    private String showInvalidOptionCampType() {
+        return UssdResponseBuilder.create()
+            .addLine("Invalid option. Please try again.")
+            .addEmptyLine()
+            .addLine("Camp Type:")
+            .addEmptyLine()
+            .addMenuItem(1, "Half Day: 9:00am - 13:00pm", null)
+            .addMenuItem(2, "Boot Camp: Boarding", null)
+            .addBackOption()
+            .build();
     }
 }
