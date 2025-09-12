@@ -4,9 +4,7 @@ import apps.sarafrika.dto.UserSession;
 import apps.sarafrika.entity.Activity;
 import apps.sarafrika.entity.Camp;
 import apps.sarafrika.entity.Registration;
-import apps.sarafrika.enums.CampType;
 import apps.sarafrika.enums.NavigationType;
-import apps.sarafrika.service.TrackingService;
 import apps.sarafrika.util.UssdResponseBuilder;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -125,7 +123,7 @@ public class UssdMenuService {
             case "1" -> {
                 session.pushState("select_camp");
                 session.resetPagination();
-                yield showCampSelection();
+                yield showCampSelection(session);
             }
             case "2" -> {
                 session.pushState("my_bookings");
@@ -140,30 +138,28 @@ public class UssdMenuService {
         };
     }
 
-    private String showCampSelection() {
+    private String showCampSelection(UserSession session) {
         List<String> campNames = campService.getDistinctCampNames();
         
+        int offset = session.paginationOffset;
+        int totalCamps = campNames.size();
+        int endIndex = Math.min(offset + PAGE_SIZE, totalCamps);
+
         UssdResponseBuilder builder = UssdResponseBuilder.create()
             .addLine("Select a camp:")
             .addEmptyLine();
         
-        int itemsAdded = 0;
-        for (int i = 0; i < campNames.size(); i++) {
+        session.currentMenuItems.clear();
+
+        for (int i = offset; i < endIndex; i++) {
             String campName = campNames.get(i);
-            // Truncate long camp names to fit USSD limits
-            String displayName = campName.length() > 25 ? 
-                campName.substring(0, 22) + "..." : campName;
-            
-            if (!builder.wouldExceedLimit(String.format("%d. %s", i + 1, displayName))) {
-                builder.addMenuItem(i + 1, displayName, null);
-                itemsAdded++;
-            } else {
-                // If we can't fit more items, add pagination
-                if (itemsAdded < campNames.size()) {
-                    builder.addMoreOption();
-                }
-                break;
-            }
+            int displayNumber = i - offset + 1;
+            builder.addMenuItem(displayNumber, campName, null);
+            session.currentMenuItems.add(campName);
+        }
+        
+        if (endIndex < totalCamps) {
+            builder.addMoreOption();
         }
         
         return builder.addBackOption().build();
@@ -204,9 +200,7 @@ public class UssdMenuService {
     private String showCampSelection(UserSession session, String category, int offset) {
         List<Camp> camps = campService.getCampsByCategory(category, offset, PAGE_SIZE + 1);
         
-        // Truncate long category names for USSD display
-        String displayCategory = category.length() > 20 ? 
-            category.substring(0, 17) + "..." : category;
+        String displayCategory = category;
         
         UssdResponseBuilder builder = UssdResponseBuilder.create()
             .addLine(displayCategory + " Camps:")
@@ -218,10 +212,8 @@ public class UssdMenuService {
         for (int i = 0; i < displayCount; i++) {
             Camp camp = camps.get(i);
             
-            // Clean up camp name - remove redundant category prefixes
             String cleanCampName = cleanCampName(camp.name, displayCategory);
             
-            // Get location and fee information from the first location
             String locationName = "";
             String fee = "0";
             if (camp.locations != null && !camp.locations.isEmpty()) {
@@ -231,20 +223,8 @@ public class UssdMenuService {
             
             String campDetail = String.format("%s, KSH %s", locationName, fee);
             
-            // Check if adding this camp would exceed limits
-            if (!builder.wouldExceedLimit(String.format("%d. %s - %s", i + 1, cleanCampName, campDetail))) {
-                builder.addMenuItem(i + 1, cleanCampName, campDetail);
-                session.currentMenuItems.add(camp.uuid.toString());
-            } else {
-                // If we can't fit, prioritize showing location over long names
-                String shortName = cleanCampName.length() > 20 ? 
-                    cleanCampName.substring(0, 17) + "..." : cleanCampName;
-                String shortDetail = String.format("%s, KSH %s", 
-                    locationName.length() > 10 ? locationName.substring(0, 7) + "..." : locationName, 
-                    fee);
-                builder.addMenuItem(i + 1, shortName, shortDetail);
-                session.currentMenuItems.add(camp.uuid.toString());
-            }
+            builder.addMenuItem(i + 1, cleanCampName, campDetail);
+            session.currentMenuItems.add(camp.uuid.toString());
         }
         
         if (camps.size() > PAGE_SIZE) {
@@ -256,21 +236,29 @@ public class UssdMenuService {
 
     private String handleCampSelection(UserSession session, String input) {
         try {
-            List<String> campNames = campService.getDistinctCampNames();
-            int selection = Integer.parseInt(input) - 1;
-            
-            if (selection >= 0 && selection < campNames.size()) {
-                String selectedCampName = campNames.get(selection);
+            int selection = Integer.parseInt(input);
+
+            if (selection == 99) { // Handle 'More' option
+                session.incrementPagination(PAGE_SIZE);
+                return showCampSelection(session);
+            }
+
+            int selectedIndex = selection - 1;
+            if (selectedIndex >= 0 && selectedIndex < session.currentMenuItems.size()) {
+                String selectedCampName = session.currentMenuItems.get(selectedIndex);
                 Camp camp = campService.findByName(selectedCampName);
                 if (camp != null) {
                     session.putData("selectedCampUuid", camp.uuid.toString());
                     session.pushState("select_location");
+                    session.resetPagination(); // Reset for next screen
                     return showLocationSelection(session, camp);
                 }
             }
-            return showInvalidSelectionCamp();
+            String campMenu = showCampSelection(session);
+            return "CON Invalid selection. Please try again.\n" + campMenu.substring(4);
         } catch (NumberFormatException e) {
-            return showInvalidInputCamp();
+            String campMenu = showCampSelection(session);
+            return "CON Invalid input. Please enter a number.\n" + campMenu.substring(4);
         }
     }
 
@@ -562,7 +550,7 @@ public class UssdMenuService {
             String referenceCode = "N/A";
             
             if (!orders.isEmpty()) {
-                var order = orders.get(0);
+                var order = orders.getFirst();
                 // Map OrderStatus to user-friendly terms
                 status = switch (order.status) {
                     case PAID -> "CLEARED";
@@ -889,8 +877,8 @@ public class UssdMenuService {
                 String[] words = location.split("\\s+");
                 StringBuilder formatted = new StringBuilder();
                 for (String word : words) {
-                    if (formatted.length() > 0) formatted.append(" ");
-                    if (word.length() > 0) {
+                    if (!formatted.isEmpty()) formatted.append(" ");
+                    if (!word.isEmpty()) {
                         formatted.append(Character.toUpperCase(word.charAt(0)));
                         if (word.length() > 1) {
                             formatted.append(word.substring(1).toLowerCase());
@@ -906,22 +894,7 @@ public class UssdMenuService {
      * Truncate long date strings to fit better in USSD constraints
      */
     private String truncateDates(String dates) {
-        if (dates == null || dates.isEmpty()) return "";
-        
-        // If dates are short enough, return as is
-        if (dates.length() <= 15) return dates;
-        
-        // Try to extract key parts like "17th-29th Nov"
-        if (dates.contains("-") && dates.contains(" ")) {
-            // Pattern like "17th- 29th Nov (9:00am - 13:00pm)"
-            String dateRange = dates.split("\\(")[0].trim(); // Remove time part
-            if (dateRange.length() <= 20) {
-                return dateRange;
-            }
-        }
-        
-        // Fallback: truncate to 12 chars + "..."
-        return dates.substring(0, 12) + "...";
+        return dates;
     }
     
     private String showInvalidSelectionLocation(UserSession session, Camp camp) {
@@ -1018,63 +991,7 @@ public class UssdMenuService {
         return builder.addBackOption().build();
     }
     
-    private String showInvalidSelectionCamp() {
-        List<String> campNames = campService.getDistinctCampNames();
-        
-        UssdResponseBuilder builder = UssdResponseBuilder.create()
-            .addLine("Invalid selection. Please try again.")
-            .addEmptyLine()
-            .addLine("Select a camp:")
-            .addEmptyLine();
-        
-        int itemsAdded = 0;
-        for (int i = 0; i < campNames.size(); i++) {
-            String campName = campNames.get(i);
-            String displayName = campName.length() > 25 ? 
-                campName.substring(0, 22) + "..." : campName;
-            
-            if (!builder.wouldExceedLimit(String.format("%d. %s", i + 1, displayName))) {
-                builder.addMenuItem(i + 1, displayName, null);
-                itemsAdded++;
-            } else {
-                if (itemsAdded < campNames.size()) {
-                    builder.addMoreOption();
-                }
-                break;
-            }
-        }
-        
-        return builder.addBackOption().build();
-    }
-    
-    private String showInvalidInputCamp() {
-        List<String> campNames = campService.getDistinctCampNames();
-        
-        UssdResponseBuilder builder = UssdResponseBuilder.create()
-            .addLine("Invalid input. Please enter a number.")
-            .addEmptyLine()
-            .addLine("Select a camp:")
-            .addEmptyLine();
-        
-        int itemsAdded = 0;
-        for (int i = 0; i < campNames.size(); i++) {
-            String campName = campNames.get(i);
-            String displayName = campName.length() > 25 ? 
-                campName.substring(0, 22) + "..." : campName;
-            
-            if (!builder.wouldExceedLimit(String.format("%d. %s", i + 1, displayName))) {
-                builder.addMenuItem(i + 1, displayName, null);
-                itemsAdded++;
-            } else {
-                if (itemsAdded < campNames.size()) {
-                    builder.addMoreOption();
-                }
-                break;
-            }
-        }
-        
-        return builder.addBackOption().build();
-    }
+
     
     private String showInvalidOptionMainMenu() {
         return UssdResponseBuilder.create()

@@ -42,11 +42,7 @@ public class UssdResponseBuilder {
     public UssdResponseBuilder addMenuItem(int number, String text, String detail) {
         String menuItem = String.format("%d. %s", number, text);
         if (detail != null && !detail.trim().isEmpty()) {
-            // Calculate remaining space for detail
-            int remainingSpace = MAX_LINE_LENGTH - menuItem.length() - 3; // 3 for " - "
-            if (remainingSpace > 10) { // Only add detail if we have reasonable space
-                menuItem += " - " + detail;
-            }
+            menuItem += " - " + detail;
         }
         return addLine(menuItem);
     }
