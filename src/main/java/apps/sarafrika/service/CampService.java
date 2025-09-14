@@ -56,4 +56,9 @@ public class CampService {
                 .page(Page.of(offset / limit, limit))
                 .list();
     }
+
+    public List<Camp> getCampsByCategory(String category) {
+        // Since categories are camp names, find camps by name without pagination
+        return Camp.find("name = ?1 and isDeleted = false", category).list();
+    }
 }
