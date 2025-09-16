@@ -323,20 +323,23 @@ public class UssdMenuService {
         for (int i = offset; i < endIndex; i++) {
             var location = camp.locations.get(i);
 
-            // Create a more compact single-line format
+            // Create a more compact single-line format with minimal whitespace
             String locationDetail;
             if (location.dates != null && !location.dates.isEmpty() && location.fee != null) {
-                // Try compact format: "LocationName (Dates) - KSH Fee"
-                String shortDate = truncateDates(location.dates);
-                locationDetail = String.format("(%s) KSH %.0f", shortDate, location.fee);
+                // Compact format: "LocationName (Dates) KSH Fee" - remove extra spaces and dashes
+                String shortDate = minimizeWhitespace(truncateDates(location.dates));
+                locationDetail = String.format("(%s) KSH%.0f", shortDate, location.fee);
             } else if (location.fee != null) {
-                locationDetail = String.format("KSH %.0f", location.fee);
+                locationDetail = String.format("KSH%.0f", location.fee);
             } else {
                 locationDetail = "";
             }
 
+            // Clean location name by removing place names after comma
+            String cleanLocationName = cleanLocationName(location.name);
+
             // Use continuous numbering (i + 1) instead of resetting per page
-            builder.addMenuItem(i + 1, location.name, locationDetail);
+            builder.addMenuItem(i + 1, cleanLocationName, locationDetail);
             session.currentMenuItems.add(String.valueOf(i)); // Store actual index
         }
 
@@ -873,6 +876,21 @@ public class UssdMenuService {
     }
 
     /**
+     * Clean location names by removing place names after comma
+     */
+    private String cleanLocationName(String locationName) {
+        if (locationName == null) return "";
+
+        // Remove everything after and including the first comma
+        int commaIndex = locationName.indexOf(',');
+        if (commaIndex != -1) {
+            return locationName.substring(0, commaIndex).trim();
+        }
+
+        return locationName.trim();
+    }
+
+    /**
      * Clean camp names by removing redundant category prefixes and making them user-friendly
      */
     private String cleanCampName(String campName, String category) {
@@ -932,6 +950,21 @@ public class UssdMenuService {
         };
     }
     
+    /**
+     * Minimize whitespace in strings to save USSD space
+     */
+    private String minimizeWhitespace(String text) {
+        if (text == null) return "";
+
+        return text
+            .replaceAll("\\s+", " ")  // Replace multiple spaces with single space
+            .replaceAll("\\s*-\\s*", "-")  // Remove spaces around dashes
+            .replaceAll("\\s*:\\s*", ":")  // Remove spaces around colons
+            .replaceAll("\\s*\\(\\s*", "(")  // Remove spaces around opening parentheses
+            .replaceAll("\\s*\\)\\s*", ")")  // Remove spaces around closing parentheses
+            .trim();
+    }
+
     /**
      * Truncate long date strings to fit better in USSD constraints
      */
