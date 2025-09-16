@@ -229,6 +229,7 @@ public class UssdMenuService {
                 Camp camp = campService.findByName(selectedCampName);
                 if (camp != null) {
                     session.putData("selectedCampUuid", camp.uuid.toString());
+                    session.resetPagination(); // Reset pagination for location selection
                     session.pushState("select_location");
                     return showLocationSelection(session, camp);
                 }
@@ -245,19 +246,51 @@ public class UssdMenuService {
         try {
             String campUuid = session.getStringData("selectedCampUuid");
             Camp camp = campService.findByUuid(UUID.fromString(campUuid));
-            
+
             if (camp == null || camp.locations == null) {
                 return "END Camp not found.";
             }
-            
+
             int selection = Integer.parseInt(input);
-            
-            
-            // Handle location selection (1-based input, convert to 0-based index)
-            if (selection >= 1 && selection <= session.currentMenuItems.size()) {
-                int actualIndex = Integer.parseInt(session.currentMenuItems.get(selection - 1));
+
+            // Handle pagination navigation
+            if (selection == 99) { // Next page
+                final int LOCATIONS_PER_PAGE = 2;
+                int currentOffset = session.paginationOffset;
+                int totalLocations = camp.locations.size();
+
+                if (currentOffset + LOCATIONS_PER_PAGE < totalLocations) {
+                    session.incrementPagination(LOCATIONS_PER_PAGE);
+                    return showLocationSelection(session, camp);
+                } else {
+                    return showLocationSelection(session, camp); // Stay on current page
+                }
+            }
+
+            // Handle pagination control
+            if (selection == 0) {
+                int currentOffset = session.paginationOffset;
+                if (currentOffset > 0) {
+                    // Previous page
+                    final int LOCATIONS_PER_PAGE = 2;
+                    session.paginationOffset = Math.max(0, currentOffset - LOCATIONS_PER_PAGE);
+                    return showLocationSelection(session, camp);
+                } else {
+                    // Back navigation
+                    return handleBackNavigation(session);
+                }
+            }
+
+            if (selection == 00) { // Explicit back
+                return handleBackNavigation(session);
+            }
+
+            // Handle location selection using continuous numbering
+            int actualIndex = selection - 1; // Convert to 0-based index
+            if (actualIndex >= 0 && actualIndex < camp.locations.size()) {
                 var selectedLocation = camp.locations.get(actualIndex);
                 session.putData("selectedLocationId", selectedLocation.uuid);
+                session.resetPagination(); // Reset pagination for next menu
                 session.pushState("select_activity");
                 return showActivitySelection(session, UUID.fromString(campUuid));
             } else {
@@ -275,14 +308,19 @@ public class UssdMenuService {
             session.pushState("select_activity");
             return showActivitySelection(session, camp.uuid);
         }
-        
+
+        final int LOCATIONS_PER_PAGE = 2;
+        int offset = session.paginationOffset;
+        int totalLocations = camp.locations.size();
+        int endIndex = Math.min(offset + LOCATIONS_PER_PAGE, totalLocations);
+
         UssdResponseBuilder builder = UssdResponseBuilder.create()
             .addLine("Select Location:")
             .addEmptyLine();
 
         session.currentMenuItems.clear();
 
-        for (int i = 0; i < camp.locations.size(); i++) {
+        for (int i = offset; i < endIndex; i++) {
             var location = camp.locations.get(i);
 
             // Create a more compact single-line format
@@ -297,12 +335,22 @@ public class UssdMenuService {
                 locationDetail = "";
             }
 
-            // Use addMenuItem which will handle truncation intelligently
+            // Use continuous numbering (i + 1) instead of resetting per page
             builder.addMenuItem(i + 1, location.name, locationDetail);
             session.currentMenuItems.add(String.valueOf(i)); // Store actual index
         }
-        
-        return builder.addBackOption().build();
+
+        // Add navigation options
+        if (endIndex < totalLocations) {
+            builder.addEmptyLine().addLine("99. Next >>");
+        }
+        if (offset > 0) {
+            builder.addLine("0. << Previous");
+        } else {
+            builder.addEmptyLine().addLine("00. Back");
+        }
+
+        return builder.build();
     }
 
     private String handleFullNameInput(UserSession session, String input) {
@@ -728,7 +776,7 @@ public class UssdMenuService {
 
     private String showActivitySelection(UserSession session, UUID campUuid) {
         List<Activity> activities = Activity.findByCampUuid(campUuid).list();
-        
+
         if (activities.isEmpty()) {
             session.pushState("enter_full_name");
             return UssdResponseBuilder.create()
@@ -737,31 +785,82 @@ public class UssdMenuService {
                 .addBackOption()
                 .build();
         }
-        
+
+        final int ACTIVITIES_PER_PAGE = 5;
+        int offset = session.paginationOffset;
+        int totalActivities = activities.size();
+        int endIndex = Math.min(offset + ACTIVITIES_PER_PAGE, totalActivities);
+
         UssdResponseBuilder builder = UssdResponseBuilder.create()
             .addLine("Select Activity:")
             .addEmptyLine();
 
         session.currentMenuItems.clear();
 
-        for (int i = 0; i < activities.size(); i++) {
+        for (int i = offset; i < endIndex; i++) {
             Activity activity = activities.get(i);
+            // Use continuous numbering (i + 1) instead of resetting per page
             builder.addMenuItem(i + 1, activity.name, null);
-            session.currentMenuItems.add(activity.uuid.toString());
+            session.currentMenuItems.add(String.valueOf(i)); // Store actual index
         }
-        
-        return builder.addBackOption().build();
+
+        // Add navigation options
+        if (endIndex < totalActivities) {
+            builder.addEmptyLine().addLine("99. Next >>");
+        }
+        if (offset > 0) {
+            builder.addLine("0. << Previous");
+        } else {
+            builder.addEmptyLine().addLine("00. Back");
+        }
+
+        return builder.build();
     }
 
     private String handleActivitySelection(UserSession session, String input) {
         try {
             int selection = Integer.parseInt(input);
             UUID campUuid = UUID.fromString(session.getStringData("selectedCampUuid"));
-            
-            
-            if (selection >= 1 && selection <= session.currentMenuItems.size()) {
-                String activityId = session.currentMenuItems.get(selection - 1);
-                session.putData("selectedActivityUuid", activityId);
+            List<Activity> activities = Activity.findByCampUuid(campUuid).list();
+
+            // Handle pagination navigation
+            if (selection == 99) { // Next page
+                final int ACTIVITIES_PER_PAGE = 5;
+                int currentOffset = session.paginationOffset;
+                int totalActivities = activities.size();
+
+                if (currentOffset + ACTIVITIES_PER_PAGE < totalActivities) {
+                    session.incrementPagination(ACTIVITIES_PER_PAGE);
+                    return showActivitySelection(session, campUuid);
+                } else {
+                    return showActivitySelection(session, campUuid); // Stay on current page
+                }
+            }
+
+            // Handle pagination control
+            if (selection == 0) {
+                int currentOffset = session.paginationOffset;
+                if (currentOffset > 0) {
+                    // Previous page
+                    final int ACTIVITIES_PER_PAGE = 5;
+                    session.paginationOffset = Math.max(0, currentOffset - ACTIVITIES_PER_PAGE);
+                    return showActivitySelection(session, campUuid);
+                } else {
+                    // Back navigation
+                    return handleBackNavigation(session);
+                }
+            }
+
+            if (selection == 00) { // Explicit back
+                return handleBackNavigation(session);
+            }
+
+            // Handle activity selection using continuous numbering
+            int actualIndex = selection - 1; // Convert to 0-based index
+            if (actualIndex >= 0 && actualIndex < activities.size()) {
+                Activity selectedActivity = activities.get(actualIndex);
+                session.putData("selectedActivityUuid", selectedActivity.uuid.toString());
+                session.resetPagination(); // Reset pagination for next menu
                 session.pushState("enter_full_name");
                 return "CON Enter participant's full name:\n\n0. Back";
             } else {
