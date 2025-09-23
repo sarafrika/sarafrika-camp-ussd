@@ -323,14 +323,11 @@ public class UssdMenuService {
         for (int i = offset; i < endIndex; i++) {
             var location = camp.locations.get(i);
 
-            // Create a more compact single-line format with minimal whitespace
+            // Create location detail with only dates (no fee)
             String locationDetail;
-            if (location.dates != null && !location.dates.isEmpty() && location.fee != null) {
-                // Compact format: "LocationName (Dates) KSH Fee" - remove extra spaces and dashes
+            if (location.dates != null && !location.dates.isEmpty()) {
                 String shortDate = minimizeWhitespace(truncateDates(location.dates));
-                locationDetail = String.format("(%s) KSH%.0f", shortDate, location.fee);
-            } else if (location.fee != null) {
-                locationDetail = String.format("KSH%.0f", location.fee);
+                locationDetail = String.format("(%s)", shortDate);
             } else {
                 locationDetail = "";
             }
@@ -980,8 +977,13 @@ public class UssdMenuService {
         // Add all location options
         for (int i = 0; i < camp.locations.size(); i++) {
             var location = camp.locations.get(i);
-            String locationDetail = String.format("KSH %.0f", location.fee);
-            builder.addMenuItem(i + 1, location.name, locationDetail);
+            String locationDetail = "";
+            if (location.dates != null && !location.dates.isEmpty()) {
+                String shortDate = minimizeWhitespace(truncateDates(location.dates));
+                locationDetail = String.format("(%s)", shortDate);
+            }
+            String cleanLocationName = cleanLocationName(location.name);
+            builder.addMenuItem(i + 1, cleanLocationName, locationDetail);
         }
 
         return builder.addBackOption().build();
@@ -995,8 +997,13 @@ public class UssdMenuService {
         // Add all location options
         for (int i = 0; i < camp.locations.size(); i++) {
             var location = camp.locations.get(i);
-            String locationDetail = String.format("KSH %.0f", location.fee);
-            builder.addMenuItem(i + 1, location.name, locationDetail);
+            String locationDetail = "";
+            if (location.dates != null && !location.dates.isEmpty()) {
+                String shortDate = minimizeWhitespace(truncateDates(location.dates));
+                locationDetail = String.format("(%s)", shortDate);
+            }
+            String cleanLocationName = cleanLocationName(location.name);
+            builder.addMenuItem(i + 1, cleanLocationName, locationDetail);
         }
 
         return builder.addBackOption().build();
