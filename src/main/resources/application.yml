@@ -27,8 +27,8 @@ quarkus:
     timeout: 10s
     
   rest-client:
-    africas-talking:
-      url: https://api.africastalking.com
+    celcom-africa:
+      url: https://isms.celcomafrica.com
       
   smallrye-openapi:
     path: /openapi
@@ -40,10 +40,10 @@ quarkus:
   http:
     port: 8080
 
-africas-talking:
-  api-key: ${AFRICAS_TALKING_API_KEY:your-api-key}
-  username: ${AFRICAS_TALKING_USERNAME:your-username}
-  environment: ${AFRICAS_TALKING_ENVIRONMENT:sandbox}
+celcom-africa:
+  api-key: ${CELCOM_API_KEY:f08988cfb329fc8c66c2bc44d8f7fc10}
+  partner-id: ${CELCOM_PARTNER_ID:862}
+  shortcode: ${CELCOM_SHORTCODE:Sarafrika}
   
 ussd:
   service-code: ${USSD_SERVICE_CODE:*789*2020#}

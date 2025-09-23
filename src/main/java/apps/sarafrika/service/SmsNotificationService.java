@@ -1,71 +1,80 @@
 package apps.sarafrika.service;
 
-import com.africastalking.AfricasTalking;
-import com.africastalking.SmsService;
-import com.africastalking.sms.Recipient;
-import jakarta.annotation.PostConstruct;
+import apps.sarafrika.dto.CelcomSmsRequest;
+import apps.sarafrika.dto.CelcomSmsResponse;
+import apps.sarafrika.entity.SmsLog;
+import apps.sarafrika.enums.SmsDeliveryStatus;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.jboss.logging.Logger;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @ApplicationScoped
 public class SmsNotificationService {
 
     private static final Logger LOG = Logger.getLogger(SmsNotificationService.class);
 
-    @ConfigProperty(name = "africas-talking.username")
-    String username;
+    @Inject
+    @RestClient
+    CelcomAfricaClient celcomAfricaClient;
 
-    @ConfigProperty(name = "africas-talking.api-key")
+    @Inject
+    SmsTrackingService smsTrackingService;
+
+    @ConfigProperty(name = "celcom-africa.api-key")
     String apiKey;
 
-    @ConfigProperty(name = "africas-talking.environment", defaultValue = "sandbox")
-    String environment;
+    @ConfigProperty(name = "celcom-africa.partner-id")
+    String partnerId;
 
-    private SmsService smsService;
-
-    @PostConstruct
-    public void init() {
-        try {
-            AfricasTalking.initialize(username, apiKey);
-            smsService = AfricasTalking.getService(AfricasTalking.SERVICE_SMS);
-            LOG.infof("SMS service initialized for environment: %s", environment);
-        } catch (Exception e) {
-            LOG.errorf(e, "Failed to initialize SMS service");
-        }
-    }
+    @ConfigProperty(name = "celcom-africa.shortcode")
+    String shortcode;
 
     public boolean sendSms(String phoneNumber, String message) {
+        String cleanedPhoneNumber = normalizePhoneNumber(phoneNumber);
+        if (cleanedPhoneNumber == null) {
+            LOG.errorf("Invalid phone number format: %s", maskPhoneNumber(phoneNumber));
+            return false;
+        }
+
+        SmsLog smsLog = new SmsLog(cleanedPhoneNumber, message, null, SmsDeliveryStatus.PENDING, null);
+        smsTrackingService.logSms(smsLog);
+
         try {
-            String cleanedPhoneNumber = normalizePhoneNumber(phoneNumber);
-            if (cleanedPhoneNumber == null) {
-                LOG.errorf("Invalid phone number format: %s", maskPhoneNumber(phoneNumber));
+            CelcomSmsRequest request = new CelcomSmsRequest(partnerId, apiKey, cleanedPhoneNumber, message, shortcode);
+            CelcomSmsResponse response = celcomAfricaClient.sendSms(request);
+
+            smsLog.setMessageId(response.messageId());
+            smsLog.setProviderResponse(response.responseDescription());
+
+            if (response.responseCode() == 200) {
+                smsLog.setDeliveryStatus(SmsDeliveryStatus.SENT);
+                LOG.infof("SMS sent successfully to %s. MessageId: %s",
+                        maskPhoneNumber(cleanedPhoneNumber), response.messageId());
+                smsTrackingService.logSms(smsLog);
+                return true;
+            } else {
+                smsLog.setDeliveryStatus(SmsDeliveryStatus.FAILED);
+                LOG.errorf("Failed to send SMS to %s. Status: %s, Description: %s",
+                        maskPhoneNumber(cleanedPhoneNumber), response.responseCode(), response.responseDescription());
+                smsTrackingService.logSms(smsLog);
                 return false;
             }
 
-            List<Recipient> recipients = smsService.send(message, new String[]{cleanedPhoneNumber}, true);
-            
-            for (Recipient recipient : recipients) {
-                if ("Success".equalsIgnoreCase(recipient.status)) {
-                    LOG.infof("SMS sent successfully to %s. MessageId: %s", 
-                             maskPhoneNumber(cleanedPhoneNumber), recipient.messageId);
-                    return true;
-                } else {
-                    LOG.errorf("Failed to send SMS to %s. Status: %s, Cost: %s", 
-                              maskPhoneNumber(cleanedPhoneNumber), recipient.status, recipient.cost);
-                }
-            }
-            return false;
-            
         } catch (Exception e) {
+            smsLog.setDeliveryStatus(SmsDeliveryStatus.FAILED);
+            smsLog.setProviderResponse(e.getMessage());
+            smsTrackingService.logSms(smsLog);
             LOG.errorf(e, "Error sending SMS to %s", maskPhoneNumber(phoneNumber));
             return false;
         }
     }
 
-    public boolean sendRegistrationConfirmation(String phoneNumber, String participantName, 
+    public boolean sendRegistrationConfirmation(String phoneNumber, String participantName,
                                                String campName, String referenceCode) {
         String message = String.format(
             "Registration confirmed for %s at %s. Reference: %s. " +
@@ -75,7 +84,7 @@ public class SmsNotificationService {
         return sendSms(phoneNumber, message);
     }
 
-    public boolean sendGuardianNotification(String guardianPhone, String participantName, 
+    public boolean sendGuardianNotification(String guardianPhone, String participantName,
                                           String campName, String referenceCode) {
         String message = String.format(
             "Your child %s has been registered for %s. Reference: %s. " +
@@ -85,7 +94,7 @@ public class SmsNotificationService {
         return sendSms(guardianPhone, message);
     }
 
-    public boolean sendPaymentReminder(String phoneNumber, String participantName, 
+    public boolean sendPaymentReminder(String phoneNumber, String participantName,
                                      String campName, String referenceCode, double amount) {
         String message = String.format(
             "Payment reminder: Complete payment of KSH %.0f for %s's registration at %s. " +
@@ -96,55 +105,35 @@ public class SmsNotificationService {
     }
 
     public boolean sendBulkNotification(List<String> phoneNumbers, String message) {
-        try {
-            String[] cleanedNumbers = phoneNumbers.stream()
+        AtomicInteger successCount = new AtomicInteger(0);
+        phoneNumbers.stream()
                 .map(this::normalizePhoneNumber)
                 .filter(num -> num != null)
-                .toArray(String[]::new);
+                .forEach(cleanedNumber -> {
+                    if (sendSms(cleanedNumber, message)) {
+                        successCount.getAndIncrement();
+                    }
+                });
 
-            if (cleanedNumbers.length == 0) {
-                LOG.warn("No valid phone numbers provided for bulk SMS");
-                return false;
-            }
-
-            List<Recipient> recipients = smsService.send(message, cleanedNumbers, true);
-            
-            int successCount = 0;
-            for (Recipient recipient : recipients) {
-                if ("Success".equalsIgnoreCase(recipient.status)) {
-                    successCount++;
-                } else {
-                    LOG.errorf("Failed to send bulk SMS to %s. Status: %s", 
-                              maskPhoneNumber(recipient.number), recipient.status);
-                }
-            }
-            
-            LOG.infof("Bulk SMS sent to %d/%d recipients successfully", successCount, recipients.size());
-            return successCount > 0;
-            
-        } catch (Exception e) {
-            LOG.errorf(e, "Error sending bulk SMS to %d recipients", phoneNumbers.size());
-            return false;
-        }
+        LOG.infof("Bulk SMS sent to %d/%d recipients successfully", successCount.get(), phoneNumbers.size());
+        return successCount.get() > 0;
     }
 
     private String normalizePhoneNumber(String phoneNumber) {
         if (phoneNumber == null) return null;
-        
+
         String cleaned = phoneNumber.replaceAll("\\s+", "");
-        
+
         if (cleaned.startsWith("0")) {
-            cleaned = "+254" + cleaned.substring(1);
-        } else if (cleaned.startsWith("254")) {
-            cleaned = "+" + cleaned;
-        } else if (!cleaned.startsWith("+254")) {
-            return null;
+            cleaned = "254" + cleaned.substring(1);
+        } else if (cleaned.startsWith("+")) {
+            cleaned = cleaned.substring(1);
         }
-        
-        if (cleaned.matches("^\\+254[17][0-9]{8}$")) {
+
+        if (cleaned.matches("^254[17][0-9]{8}$")) {
             return cleaned;
         }
-        
+
         return null;
     }
 
