@@ -62,8 +62,13 @@ public class SmsNotificationService {
                 return true;
             } else {
                 smsLog.setDeliveryStatus(SmsDeliveryStatus.FAILED);
-                LOG.errorf("Failed to send SMS to %s. Status: %s, Description: %s",
+                if (response.responseCode() == 0) {
+                    LOG.errorf("Failed to send SMS to %s. Received response code 0. This might indicate an authentication issue or invalid credentials with the SMS provider.",
+                        maskPhoneNumber(cleanedPhoneNumber));
+                } else {
+                    LOG.errorf("Failed to send SMS to %s. Status: %s, Description: %s",
                         maskPhoneNumber(cleanedPhoneNumber), response.responseCode(), response.responseDescription());
+                }
                 smsTrackingService.logSms(smsLog);
                 return false;
             }
