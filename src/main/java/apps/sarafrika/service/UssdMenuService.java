@@ -444,8 +444,9 @@ public class UssdMenuService {
         if (camp == null) {
             return "END Camp not found. Please try again.";
         }
-        
-        UUID locationUuid = (UUID) session.getData("selectedLocationId");
+
+        String locationUuidStr = session.getStringData("selectedLocationId");
+        UUID locationUuid = locationUuidStr != null ? UUID.fromString(locationUuidStr) : null;
         String locationName = "";
         String fee = "0";
         String dates = "Not specified";
