@@ -64,6 +64,7 @@ public class RegistrationService {
         
         Order order = orderService.createOrder(registration, activityUuid, locationUuid, orderAmount);
         
+        registration.camp = camp;
         return registration;
     }
 

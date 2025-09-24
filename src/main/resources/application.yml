@@ -29,6 +29,8 @@ quarkus:
   rest-client:
     celcom-africa:
       url: https://isms.celcomafrica.com
+    cheddar-api:
+      url: https://cheddar.sarafrika.com
       
   smallrye-openapi:
     path: /openapi
@@ -44,6 +46,9 @@ celcom-africa:
   api-key: ${CELCOM_API_KEY:f08988cfb329fc8c66c2bc44d8f7fc10}
   partner-id: ${CELCOM_PARTNER_ID:862}
   shortcode: ${CELCOM_SHORTCODE:Sarafrika}
+
+cheddar:
+  paybill: ${CHEDDAR_PAYBILL:4953892}
   
 ussd:
   service-code: ${USSD_SERVICE_CODE:*789*2020#}

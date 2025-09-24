@@ -37,6 +37,9 @@ public class UssdMenuService {
     @Inject
     OrderService orderService;
 
+    @Inject
+    PaymentService paymentService;
+
     public String processUssdInput(UserSession session, String text) {
         
         if (text == null || text.trim().isEmpty()) {
@@ -500,9 +503,12 @@ public class UssdMenuService {
             }
             
             var order = orders.get(0); // Get the first (and should be only) order
+
+            // Initiate STK Push
+            String participantPhone = session.getStringData("participantPhone");
+            paymentService.initiateStkPush(order, participantPhone);
             
             // Send SMS notifications
-            String participantPhone = session.getStringData("participantPhone");
             String guardianPhone = session.getStringData("guardianPhone");
             String participantName = session.getStringData("participantName");
             
@@ -529,8 +535,8 @@ public class UssdMenuService {
                 
                 Reference: %s
                 
-                Please complete payment via M-Pesa.
-                You will receive SMS confirmations.
+                A payment prompt has been sent to your phone.
+                Please enter your M-Pesa PIN to complete the payment.
                 
                 Thank you for choosing Camp Sarafrika!""",
                 order.referenceCode);
