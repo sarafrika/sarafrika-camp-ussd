@@ -48,8 +48,10 @@ public class RegistrationService {
         registration.persist();
         
         // Get activity and location from session for order creation
-        UUID activityUuid = (UUID) session.getData("selectedActivityUuid");
-        UUID locationUuid = (UUID) session.getData("selectedLocationId");
+        String activityUuidStr = session.getStringData("selectedActivityUuid");
+        UUID activityUuid = activityUuidStr != null ? UUID.fromString(activityUuidStr) : null;
+        String locationUuidStr = session.getStringData("selectedLocationId");
+        UUID locationUuid = locationUuidStr != null ? UUID.fromString(locationUuidStr) : null;
         
         // Create order for payment tracking with activity and location
         BigDecimal orderAmount = BigDecimal.ZERO;
