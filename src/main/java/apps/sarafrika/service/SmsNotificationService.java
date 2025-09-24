@@ -86,7 +86,8 @@ public class SmsNotificationService {
                                                String campName, String referenceCode) {
         String message = String.format(
             "Registration confirmed for %s at %s. Reference: %s. " +
-            "Payment instructions will follow. Camp Sarafrika.",
+            "If no STK push is received, please make payment to Paybill 4953892. " +
+            "Use Reference No as Account No. Camp Sarafrika.",
             participantName, campName, referenceCode
         );
         return sendSms(phoneNumber, message);
@@ -96,7 +97,8 @@ public class SmsNotificationService {
                                           String campName, String referenceCode) {
         String message = String.format(
             "Your child %s has been registered for %s. Reference: %s. " +
-            "Payment details will be sent shortly. Camp Sarafrika.",
+            "If no STK push is received, please make payment to Paybill 4953892. " +
+            "Use Reference No as Account No. Camp Sarafrika.",
             participantName, campName, referenceCode
         );
         return sendSms(guardianPhone, message);
@@ -106,7 +108,8 @@ public class SmsNotificationService {
                                      String campName, String referenceCode, double amount) {
         String message = String.format(
             "Payment reminder: Complete payment of KSH %.0f for %s's registration at %s. " +
-            "Reference: %s. Camp Sarafrika.",
+            "Reference: %s. If no STK push is received, please make payment to Paybill 4953892. " +
+            "Use Reference No as Account No. Camp Sarafrika.",
             amount, participantName, campName, referenceCode
         );
         return sendSms(phoneNumber, message);
