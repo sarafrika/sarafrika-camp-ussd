@@ -27,8 +27,10 @@ public class PaymentService {
             return;
         }
 
+        String normalizedPhoneNumber = normalizePhoneNumber(phoneNumber);
+
         StkPushRequest stkPushRequest = new StkPushRequest(
-            phoneNumber,
+            normalizedPhoneNumber,
             order.orderAmount,
             paybill,
             order.referenceCode
@@ -49,5 +51,16 @@ public class PaymentService {
         } catch (Exception e) {
             LOG.errorf(e, "Exception while initiating STK push for order %s", order.referenceCode);
         }
+    }
+
+    private String normalizePhoneNumber(String phoneNumber) {
+        if (phoneNumber == null) {
+            return null;
+        }
+        String cleaned = phoneNumber.trim().replace("+", "");
+        if (cleaned.startsWith("0")) {
+            return "254" + cleaned.substring(1);
+        }
+        return cleaned;
     }
 }
