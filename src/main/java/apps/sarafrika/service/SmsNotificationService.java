@@ -34,6 +34,9 @@ public class SmsNotificationService {
     @ConfigProperty(name = "celcom-africa.shortcode")
     String shortcode;
 
+    @ConfigProperty(name = "app.organizer-contact")
+    String organizerContact;
+
     public boolean sendSms(String phoneNumber, String message) {
         String cleanedPhoneNumber = normalizePhoneNumber(phoneNumber);
         if (cleanedPhoneNumber == null) {
@@ -100,6 +103,16 @@ public class SmsNotificationService {
             "Payment reminder: Complete payment of KSH %.0f for %s's registration at %s. " +
             "Reference: %s. Camp Sarafrika.",
             amount, participantName, campName, referenceCode
+        );
+        return sendSms(phoneNumber, message);
+    }
+
+    public boolean sendPaymentConfirmation(String phoneNumber, String participantName,
+                                         String activityName, String locationName, String locationDates,
+                                         String referenceCode, double amountPaid) {
+        String message = String.format(
+            "Hi %s,\nYou are registered for %s (%s, %s).\nRef: %s. Fee paid: KShs %.0f.\nOrganizer Contact: %s",
+            participantName, activityName, locationName, locationDates, referenceCode, amountPaid, organizerContact
         );
         return sendSms(phoneNumber, message);
     }

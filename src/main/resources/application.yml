@@ -49,6 +49,9 @@ ussd:
   service-code: ${USSD_SERVICE_CODE:*789*2020#}
   session-timeout: 300 # 5 minutes in seconds
 
+app:
+  organizer-contact: ${ORGANIZER_CONTACT:0712-345678}
+
 logging:
   level:
     apps.sarafrika: DEBUG
