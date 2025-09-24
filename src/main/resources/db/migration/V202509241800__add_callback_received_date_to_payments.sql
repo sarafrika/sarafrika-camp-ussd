@@ -1,0 +1,1 @@
+ALTER TABLE payments ADD COLUMN callback_received_date TIMESTAMP;
