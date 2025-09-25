@@ -49,6 +49,7 @@ celcom-africa:
 
 cheddar:
   paybill: ${CHEDDAR_PAYBILL:4953892}
+  callback-url: https://camp-ussd.sarafrika.com/api/payments/confirm
   
 ussd:
   service-code: ${USSD_SERVICE_CODE:*789*2020#}

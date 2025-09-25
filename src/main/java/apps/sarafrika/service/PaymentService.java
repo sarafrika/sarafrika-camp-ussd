@@ -21,6 +21,9 @@ public class PaymentService {
     @ConfigProperty(name = "cheddar.paybill", defaultValue = "4953892")
     String paybill;
 
+    @ConfigProperty(name = "cheddar.callback-url")
+    String callbackUrl;
+
     public void initiateStkPush(Order order, String phoneNumber) {
         if (order == null) {
             LOG.error("Cannot initiate STK push for a null order.");
@@ -33,7 +36,8 @@ public class PaymentService {
             normalizedPhoneNumber,
             order.orderAmount,
             paybill,
-            order.referenceCode
+            order.referenceCode,
+            callbackUrl
         );
 
         try {

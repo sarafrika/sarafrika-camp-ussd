@@ -7,5 +7,6 @@ public record StkPushRequest(
     @JsonProperty("phoneNo") String phoneNo,
     @JsonProperty("amount") BigDecimal amount,
     @JsonProperty("paybill") String paybill,
-    @JsonProperty("paymentReference") String paymentReference
+    @JsonProperty("paymentReference") String paymentReference,
+    @JsonProperty("callbackUrl") String callbackUrl
 ) {}
