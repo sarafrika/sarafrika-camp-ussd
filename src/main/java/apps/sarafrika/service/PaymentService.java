@@ -61,9 +61,12 @@ public class PaymentService {
         if (phoneNumber == null) {
             return null;
         }
-        String cleaned = phoneNumber.trim().replace("+", "");
+        String cleaned = phoneNumber.trim();
+        if (cleaned.startsWith("+")) {
+            cleaned = cleaned.substring(1);
+        }
         if (cleaned.startsWith("0")) {
-            return "254" + cleaned.substring(1);
+            cleaned = "254" + cleaned.substring(1);
         }
         return cleaned;
     }
