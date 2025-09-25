@@ -78,8 +78,6 @@ public class UssdMenuService {
             case "select_activity" -> handleActivitySelection(session, lastInput);
             case "enter_full_name" -> handleFullNameInput(session, lastInput);
             case "enter_age" -> handleAgeInput(session, lastInput);
-            case "enter_guardian_phone" -> handleGuardianPhoneInput(session, lastInput);
-            case "enter_participant_phone" -> handleParticipantPhoneInput(session, lastInput);
             case "confirm_registration" -> handleRegistrationConfirmation(session, lastInput);
             case "my_bookings" -> handleMyBookingsInput(session, lastInput);
             case "help" -> handleHelpInput(session, lastInput);
@@ -345,7 +343,7 @@ public class UssdMenuService {
 
         // Add navigation options
         if (endIndex < totalLocations) {
-            builder.addEmptyLine().addLine("99. Next >>");
+            builder.addEmptyLine().addLine("99. More >>");
         }
         if (offset > 0) {
             builder.addLine("0. << Previous");
@@ -389,13 +387,9 @@ public class UssdMenuService {
             
             session.putData("participantAge", age);
             
-            // All participants are minors (5-18), so always ask for guardian details
-            session.pushState("enter_guardian_phone");
-            return UssdResponseBuilder.create()
-            .addLine("Enter guardian's phone number:")
-            .addEmptyLine()
-            .addBackOption()
-            .build();
+            // All participants are minors (5-18), so we can proceed to confirmation
+            session.pushState("confirm_registration");
+            return showRegistrationConfirmation(session);
             
         } catch (NumberFormatException e) {
             return UssdResponseBuilder.create()
@@ -406,39 +400,7 @@ public class UssdMenuService {
         }
     }
 
-    private String handleGuardianPhoneInput(UserSession session, String input) {
-        if (!isValidPhoneNumber(input)) {
-            return UssdResponseBuilder.create()
-                .addLine("Invalid phone number format.")
-                .addLine("Please enter a valid Kenyan phone number:")
-                .addEmptyLine()
-                .addBackOption()
-                .build();
-        }
-        
-        session.putData("guardianPhone", input);
-        session.pushState("enter_participant_phone");
-        return UssdResponseBuilder.create()
-            .addLine("Enter participant's phone number:")
-            .addEmptyLine()
-            .addBackOption()
-            .build();
-    }
 
-    private String handleParticipantPhoneInput(UserSession session, String input) {
-        if (!isValidPhoneNumber(input)) {
-            return UssdResponseBuilder.create()
-                .addLine("Invalid phone number format.")
-                .addLine("Please enter a valid Kenyan phone number:")
-                .addEmptyLine()
-                .addBackOption()
-                .build();
-        }
-        
-        session.putData("participantPhone", input);
-        session.pushState("confirm_registration");
-        return showRegistrationConfirmation(session);
-    }
 
     private String showRegistrationConfirmation(UserSession session) {
         String campUuid = session.getStringData("selectedCampUuid");
@@ -505,30 +467,18 @@ public class UssdMenuService {
             var order = orders.get(0); // Get the first (and should be only) order
 
             // Initiate STK Push
-            String participantPhone = session.getStringData("participantPhone");
-            paymentService.initiateStkPush(order, participantPhone);
+            paymentService.initiateStkPush(order, session.phoneNumber);
             
             // Send SMS notifications
-            String guardianPhone = session.getStringData("guardianPhone");
             String participantName = session.getStringData("participantName");
             
             // Send confirmation SMS to participant
             smsNotificationService.sendRegistrationConfirmation(
-                participantPhone, 
+                session.phoneNumber, 
                 participantName, 
                 registration.camp.name, 
                 order.referenceCode
             );
-            
-            // Send notification SMS to guardian if different phone number
-            if (guardianPhone != null && !guardianPhone.equals(participantPhone)) {
-                smsNotificationService.sendGuardianNotification(
-                    guardianPhone, 
-                    participantName, 
-                    registration.camp.name, 
-                    order.referenceCode
-                );
-            }
             
             return String.format("""
                 END Registration successful!
@@ -813,7 +763,7 @@ public class UssdMenuService {
 
         // Add navigation options
         if (endIndex < totalActivities) {
-            builder.addEmptyLine().addLine("99. Next >>");
+            builder.addEmptyLine().addLine("99. More >>");
         }
         if (offset > 0) {
             builder.addLine("0. << Previous");
